@@ -25,7 +25,8 @@ function MapInstance(value: MapInfo) {
     let disposed = false
     let session: MapSession | undefined
     let instance: EoMap | undefined
-    let queued = Promise.resolve()
+    let pending: MapInfo | undefined
+    let updating = false
     const failed = (error: unknown) => {
       if (disposed) return
       console.error(error)
@@ -43,13 +44,16 @@ function MapInstance(value: MapInfo) {
       ) as HTMLElement
       outer.style.width = `${element.clientWidth}px`
       outer.style.height = `${element.clientHeight}px`
-      instance?.invalidateSize({ debounceMoveend: true })
+      instance?.stop()
+      instance?.invalidateSize({ animate: false })
     }
     const resize = new ResizeObserver(syncSize)
     resize.observe(element)
     const initialize = async () => {
       const library = await import('@thewakingsands/eorzea-interactive-map')
       if (disposed) return
+      // The library's initial animated zoom otherwise overrides the requested focus.
+      library.L.Map.mergeOptions({ zoomAnimation: false })
       session = await adapter.createMapSession(library)
       if (disposed) {
         session.dispose()
@@ -62,7 +66,7 @@ function MapInstance(value: MapInfo) {
         libraryCss,
         mapCss,
         iconCss,
-        ':host{all:initial;display:block;position:relative;width:100%;height:100%;overflow:hidden;background:transparent}',
+        ':host{all:initial;display:block;position:relative;isolation:isolate;width:100%;height:100%;overflow:hidden;background:transparent}.erozea-map-outer{border:0!important;border-radius:0!important;box-shadow:none!important}.eorzea-map-resize-handler{display:none}',
       ].join('\n')
       sheet.replaceSync(css)
       shadow.adoptedStyleSheets = [sheet]
@@ -77,21 +81,33 @@ function MapInstance(value: MapInfo) {
       }
       syncSize()
       update.current = (current) => {
-        queued = queued
-          .then(async () => {
-            if (disposed) return
+        pending = current
+        if (updating) return
+        updating = true
+        const drain = async () => {
+          while (pending && !disposed) {
+            const next = pending
+            pending = undefined
             await session?.prepareIcons(
-              current.markers?.map(({ icon }) => Number(icon)) ?? [],
+              next.markers?.flatMap(({ icon }) =>
+                icon ? [Number(icon)] : [],
+              ) ?? [],
             )
-            if (!disposed)
-              await displayMap(
-                map,
-                current,
-                library,
-                shadow.getElementById('title') as HTMLElement,
-              )
-          })
+            if (disposed) return
+            await displayMap(
+              map,
+              next,
+              library,
+              shadow.getElementById('title') as HTMLElement,
+            )
+            if (!disposed) setError(undefined)
+          }
+        }
+        void drain()
           .catch(failed)
+          .finally(() => {
+            updating = false
+          })
       }
       update.current(latest.current)
     }
@@ -105,8 +121,8 @@ function MapInstance(value: MapInfo) {
     }
   }, [])
   useEffect(() => {
-    update.current?.({ map: value.map, markers: value.markers })
-  }, [value.map, value.markers])
+    update.current?.(value)
+  }, [value])
   return (
     <>
       {error && (

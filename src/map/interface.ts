@@ -1,5 +1,7 @@
 export interface Marker {
-  icon: MapIcon
+  id?: string
+  kind?: 'player' | 'observed' | 'history'
+  icon?: MapIcon
   x: number
   y: number
   title?: string

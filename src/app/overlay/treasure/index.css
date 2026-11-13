@@ -52,3 +52,59 @@
   padding-bottom: 44px;
   color: var(--color-fg-3);
 }
+
+.treasure-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+}
+.treasure-card-navigation {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 8px 10px;
+}
+.treasure-navigation {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  align-items: center;
+  min-width: 0;
+}
+.treasure-guidance {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--color-fg-2);
+  min-width: 0;
+}
+.treasure-guidance > svg {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  color: var(--color-lime);
+}
+.treasure-height {
+  display: block;
+  color: var(--color-fg-3);
+}
+@media (max-width: 360px) {
+  .treasure-card-navigation .treasure-summary {
+    flex-wrap: wrap;
+    gap: 3px;
+  }
+  .treasure-card-navigation .treasure-place {
+    width: 100%;
+  }
+  .treasure-card-navigation .treasure-position {
+    margin-left: 0;
+  }
+}
+
+.treasure-data-note {
+  color: var(--color-fg-3);
+  font-size: 11px;
+}

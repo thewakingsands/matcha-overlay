@@ -1,0 +1,99 @@
+.overlay-exploration {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+.exploration-map {
+  position: relative;
+  flex: 0 0 43%;
+  min-height: 100px;
+  border-bottom: 1px solid var(--color-line);
+}
+.exploration-map-caption {
+  position: absolute;
+  right: 8px;
+  bottom: 4px;
+  padding: 2px 5px;
+  color: var(--color-fg-2);
+  background: var(--color-panel);
+  font-size: 11px;
+}
+.exploration-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px 8px;
+}
+.exploration-row {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 3px;
+  padding: 8px;
+  border: 0;
+  border-bottom: 1px solid var(--color-line);
+  background: transparent;
+  color: var(--color-fg);
+  text-align: left;
+  cursor: pointer;
+}
+.exploration-row:hover,
+.exploration-row[aria-pressed="true"] {
+  background: var(--color-hover);
+}
+.exploration-row:focus-visible,
+.exploration-history > summary:focus-visible {
+  outline: 2px solid var(--color-lime);
+  outline-offset: -2px;
+}
+.exploration-row-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.exploration-rank {
+  margin-left: auto;
+  color: var(--color-fg-3);
+  font-weight: 400;
+}
+.exploration-row-detail,
+.exploration-coordinates {
+  color: var(--color-fg-3);
+  font-size: 12px;
+}
+.exploration-coordinates {
+  font-family: var(--font-mono);
+}
+.exploration-status {
+  margin: 8px;
+  color: var(--color-fg-3);
+}
+.exploration-history > summary {
+  padding: 8px;
+  cursor: pointer;
+  color: var(--color-fg-2);
+}
+.hunt-symbol {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border: 1.5px solid var(--color-fg-2);
+  border-radius: 50%;
+}
+.hunt-symbol-observed {
+  background: var(--color-lime);
+  border-color: var(--color-lime);
+}
+.hunt-symbol-ended {
+  opacity: 0.45;
+}
+.hunt-symbol-position-unknown {
+  border-style: dashed;
+}
