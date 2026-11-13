@@ -7,6 +7,7 @@ import {
   clearClientCatalog,
 } from '../data/catalog'
 import { imageUrls } from '../lib/image-urls'
+import { clearExploration, receiveExploration } from './exploration'
 import type { AdapterState, OverlayAdapter, ViewClock } from './types'
 
 interface DataSourceInfo {
@@ -52,6 +53,7 @@ export async function subscribeMojito(
   const deliver = (event: MatchaEnvelope) => {
     if (!active || signal?.aborted || event.sequence <= lastSequence) return
     lastSequence = event.sequence
+    receiveExploration(event.type, event.content)
     receive(event)
   }
   const restore = async (reset: boolean, attempt = 0): Promise<void> => {
@@ -65,6 +67,7 @@ export async function subscribeMojito(
       !Array.isArray(state.events)
     )
       throw new Error('数据源快照无效')
+    clearExploration()
     if (reset)
       receive({
         sequence: lastSequence,
@@ -129,6 +132,7 @@ export async function subscribeMojito(
             try {
               await restore(true)
             } catch (error) {
+              clearExploration()
               setSourceStatus(
                 'error',
                 '数据流存在缺口，恢复失败，请重新打开页面',
@@ -388,6 +392,7 @@ export async function startMojito(
   void subscription.closed.then(({ reason }) => {
     if (!disposed) {
       setItemDataSource(null)
+      clearExploration()
       setSourceStatus('error', `数据源已停止：${reason}`)
     }
   })
@@ -490,6 +495,7 @@ export const adapter: OverlayAdapter = {
   name: 'Mojito',
   prepare: prepareSource,
   dispose() {
+    clearExploration()
     lifetime.abort()
     for (const dispose of cleanups) dispose()
     cleanups.clear()

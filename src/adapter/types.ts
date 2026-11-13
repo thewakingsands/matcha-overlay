@@ -36,3 +36,13 @@ export interface OverlayAdapter {
   resolveImage(url: string): Promise<{ url: string; dispose: Dispose }>
   createMapSession(library: MapLibrary): Promise<MapSession>
 }
+
+export type {
+  EurekaEntry,
+  EurekaState,
+  ExplorationContext,
+  ExplorationStates,
+  HuntEntry,
+  HuntState,
+  NavigationState,
+} from './exploration-types'

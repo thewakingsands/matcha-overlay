@@ -22,6 +22,7 @@ import type { OverlayProps } from './interface'
 import { ActWsNotice } from './notice/actws'
 import { WelcomeNotice } from './notice/welcome'
 import { CactpotOverlay } from './overlay/cactpot'
+import { EurekaOverlay, HuntOverlay } from './overlay/exploration'
 import { FishingOverlay } from './overlay/fishing'
 import { GearsetOverlay } from './overlay/gearset'
 import { MarketOverlay } from './overlay/market'
@@ -32,6 +33,7 @@ interface Tab {
   title: string
   /** Only in ACT, where its troubleshooting steps apply */
   actOnly?: boolean
+  mojitoOnly?: boolean
   Component: (props: OverlayProps) => ReactElement | null
 }
 
@@ -41,11 +43,15 @@ const tabs: Record<string, Tab> = {
   cactpot: { title: '仙人微彩', Component: CactpotOverlay },
   treasure: { title: '寻宝', Component: TreasureOverlay },
   fishing: { title: '钓鱼', Component: FishingOverlay },
+  hunts: { title: '狩猎', mojitoOnly: true, Component: HuntOverlay },
+  eureka: { title: '优雷卡', mojitoOnly: true, Component: EurekaOverlay },
   submarine: { title: '部队潜水艇', Component: SubmarineOverlay },
   welcome: { title: '关于', actOnly: true, Component: WelcomeNotice },
 }
 const available = Object.entries(tabs).filter(
-  ([, tab]) => !tab.actOnly || adapter.name === 'ACT',
+  ([, tab]) =>
+    (!tab.actOnly || adapter.name === 'ACT') &&
+    (!tab.mojitoOnly || adapter.name === 'Mojito'),
 )
 const defaultTab = adapter.name === 'ACT' ? 'welcome' : 'market'
 

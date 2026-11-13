@@ -283,3 +283,52 @@ it('refreshes catalogs when client data changes and rejects late results after d
   await new Promise((resolve) => setTimeout(resolve, 0))
   expect(FishingCatalog.fish).toEqual({})
 })
+
+it('restores optional exploration states through the adapter and clears them on Reset and disposal', async () => {
+  const f = fixture()
+  const { adapter, setSourceStatus } = await import('./mojito')
+  const { getExplorationState } = await import('./exploration')
+  await adapter.prepare()
+  const stop = await adapter.subscribeEvents(() => {})
+  const context = {
+    sessionId: 'synthetic',
+    characterGeneration: 0,
+    clockGeneration: 0,
+    zoneEpoch: 1,
+    catalogRevision: 1,
+    territoryId: 732,
+    clock: {
+      now: 10000,
+      base: 'packet-unix',
+      generation: 0,
+      source: 'replay',
+      paused: true,
+    },
+  }
+  const content = {
+    context,
+    status: 'no-target',
+    reason: null,
+    target: null,
+    player: null,
+    guidance: null,
+  }
+  await f.emit('matcha.events', [
+    { sequence: 2, type: 'NavigationState', content, timestamp: 10000 },
+  ])
+  expect(getExplorationState().navigation).toEqual(content)
+  await f.emit('matcha.status', [{ mapDataGeneration: 8 }])
+  expect(getExplorationState().navigation).toEqual(content)
+  setSourceStatus('error', 'Map image unavailable')
+  expect(getExplorationState().navigation).toEqual(content)
+  await f.emit('matcha.events', [
+    { sequence: 3, type: 'Reset', content: null, timestamp: 10000 },
+  ])
+  expect(getExplorationState().navigation).toBeNull()
+  await f.emit('matcha.events', [
+    { sequence: 4, type: 'NavigationState', content, timestamp: 10000 },
+  ])
+  stop()
+  adapter.dispose()
+  expect(getExplorationState().navigation).toBeNull()
+})

@@ -35,6 +35,7 @@ export function useTreasureSpot(eventEmitter: EventEmitter) {
     }
     const row = map[info.location]
     return {
+      identity: `${info.item}:${info.location}`,
       map: row.map,
       x: row.x,
       y: row.y,
