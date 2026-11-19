@@ -15,7 +15,7 @@ interface DisplayState {
       x: number
       y: number
       title: string | undefined
-      compact?: boolean
+      compact: boolean
     }
   >
   line: Polyline | null
@@ -103,21 +103,39 @@ export async function displayMap(
     if (!current) {
       const layer = createMarker(instance, marker, library)
       if (!layer) continue
-      current = { layer, signature, x: marker.x, y: marker.y, title: undefined }
+      current = {
+        layer,
+        signature,
+        x: marker.x,
+        y: marker.y,
+        title: undefined,
+        compact: false,
+      }
       state.markers.set(key, current)
     } else if (current.x !== marker.x || current.y !== marker.y) {
       current.layer.setLatLng(instance.mapToLatLng2D(marker.x, marker.y))
       current.x = marker.x
       current.y = marker.y
     }
-    if (marker.compact !== current.compact) {
-      current.compact = marker.compact
-      current.layer
-        .getElement()
-        ?.classList.toggle(
-          'exploration-marker-compact',
-          marker.compact === true,
+    const compact = marker.compact ?? false
+    if (
+      compact !== current.compact &&
+      current.layer instanceof library.L.Marker
+    ) {
+      current.compact = compact
+      const { options } = current.layer.getIcon()
+      const iconUrl = 'iconUrl' in options && options.iconUrl
+      if (iconUrl) {
+        const size = compact ? 18 : 32
+        current.layer.setIcon(
+          library.L.icon({
+            ...options,
+            iconUrl,
+            iconSize: [size, size],
+            iconAnchor: [size / 2, size / 2],
+          }),
         )
+      }
     }
     if (marker.title === current.title) continue
     current.title = marker.title

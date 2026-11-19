@@ -361,9 +361,8 @@ try {
     entries:Array.from({length:20},(_,i)=>({...samples.eureka.entries[0],fateId:500+i,name:'Dense NM '+i,
       position:{...samples.eureka.entries[0].position,x:20+(i%4)*0.5,y:19+Math.floor(i/4)*0.5}}))
   })`)
-  await wait(
-    `${eurekaShadow}.querySelectorAll('.exploration-marker-compact').length===20`,
-  )
+  const compactNm = `[...${eurekaShadow}.querySelectorAll('.leaflet-popup-pane img.leaflet-marker-icon')].filter(img=>img.width===18).length`
+  await wait(`${compactNm}===20`)
   assert.equal(
     await evaluate(
       `${eurekaShadow}.querySelectorAll('.marker-tooltip').length`,
@@ -388,12 +387,7 @@ try {
     ),
     1,
   )
-  assert.equal(
-    await evaluate(
-      `${eurekaShadow}.querySelectorAll('.exploration-marker-compact').length`,
-    ),
-    19,
-  )
+  assert.equal(await evaluate(compactNm), 19)
   checks.push(
     'dense Eureka map keeps all NM positions and labels only the selected one',
   )
