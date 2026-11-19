@@ -259,7 +259,7 @@ try {
       await new Promise((r) => setTimeout(r, 300))
       assert(
         await evaluate(
-          `(()=>{const panel=document.querySelector('.overlay-hunt'),map=panel.querySelector('.exploration-map');return map.clientHeight>=panel.clientHeight*.6-1})()`,
+          `(()=>{const panel=document.querySelector('.overlay-exploration'),map=panel.querySelector('.exploration-map');return map.clientHeight>=panel.clientHeight*.6-1})()`,
         ),
         'a short hunt list leaves at least 60% of the panel for the map',
       )
@@ -355,6 +355,48 @@ try {
       )
     }
   }
+  const eurekaShadow = `[...document.querySelectorAll('.exploration-map div')].find(el=>el.shadowRoot).shadowRoot`
+  await evaluate(`__mjt275.emit('EurekaState',{
+    ...samples.eureka,
+    entries:Array.from({length:20},(_,i)=>({...samples.eureka.entries[0],fateId:500+i,name:'Dense NM '+i,
+      position:{...samples.eureka.entries[0].position,x:20+(i%4)*0.5,y:19+Math.floor(i/4)*0.5}}))
+  })`)
+  await wait(
+    `${eurekaShadow}.querySelectorAll('.exploration-marker-compact').length===20`,
+  )
+  assert.equal(
+    await evaluate(
+      `${eurekaShadow}.querySelectorAll('.marker-tooltip').length`,
+    ),
+    0,
+  )
+  assert(
+    await evaluate(
+      `(()=>{const panel=document.querySelector('.overlay-exploration'),map=panel.querySelector('.exploration-map');return map.clientHeight>=panel.clientHeight*.6-1})()`,
+    ),
+    'the full Eureka list leaves at least 60% of the panel for the map',
+  )
+  await evaluate(
+    `Array.from(document.querySelectorAll('.eureka-row')).find(row=>row.textContent.includes('Dense NM 0')).click()`,
+  )
+  await wait(
+    `${eurekaShadow}.querySelector('.marker-tooltip')?.textContent==='Dense NM 0'`,
+  )
+  assert.equal(
+    await evaluate(
+      `${eurekaShadow}.querySelectorAll('.marker-tooltip').length`,
+    ),
+    1,
+  )
+  assert.equal(
+    await evaluate(
+      `${eurekaShadow}.querySelectorAll('.exploration-marker-compact').length`,
+    ),
+    19,
+  )
+  checks.push(
+    'dense Eureka map keeps all NM positions and labels only the selected one',
+  )
   await menu('寻宝')
   await evaluate(
     `(async()=>{await __mjt275.emit('TreasureSpot',{item:100,location:0,isNew:true});await __mjt275.emit('NavigationState',{...samples.navigation,status:'waiting',reason:'目录读取中',target:null,player:null,guidance:null})})()`,

@@ -129,10 +129,7 @@ export function HuntOverlay({ active }: OverlayProps) {
     </button>
   )
   return (
-    <section
-      className="overlay overlay-exploration overlay-hunt"
-      aria-label="狩猎观察"
-    >
+    <section className="overlay overlay-exploration" aria-label="狩猎观察">
       {map && (
         <div className="exploration-map">
           <EorzeaMap {...map} />
@@ -184,7 +181,8 @@ export function EurekaOverlay({ active }: OverlayProps) {
                       icon: MapIcon.Fate,
                       x: entry.position.x,
                       y: entry.position.y,
-                      title: entry.name,
+                      compact: entry !== chosen,
+                      title: entry === chosen ? entry.name : undefined,
                     },
                   ]
                 : [],

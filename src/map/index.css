@@ -17,6 +17,9 @@ html,
 .leaflet-marker-icon[data-data-type="1"] {
   cursor: default;
 }
+.exploration-marker-compact {
+  scale: 0.55;
+}
 .leaflet-control-container,
 .eorzea-map-label {
   display: none !important;

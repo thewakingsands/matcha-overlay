@@ -5,6 +5,7 @@ export interface Marker {
   x: number
   y: number
   title?: string
+  compact?: boolean
 }
 
 // https://xivapi.com/docs/Icons?set=icons060000

@@ -15,6 +15,7 @@ interface DisplayState {
       x: number
       y: number
       title: string | undefined
+      compact?: boolean
     }
   >
   line: Polyline | null
@@ -108,6 +109,15 @@ export async function displayMap(
       current.layer.setLatLng(instance.mapToLatLng2D(marker.x, marker.y))
       current.x = marker.x
       current.y = marker.y
+    }
+    if (marker.compact !== current.compact) {
+      current.compact = marker.compact
+      current.layer
+        .getElement()
+        ?.classList.toggle(
+          'exploration-marker-compact',
+          marker.compact === true,
+        )
     }
     if (marker.title === current.title) continue
     current.title = marker.title

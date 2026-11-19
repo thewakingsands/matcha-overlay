@@ -10,7 +10,7 @@
 }
 .exploration-map {
   position: relative;
-  flex: 0 0 43%;
+  flex: 1 1 60%;
   min-height: 100px;
   border-bottom: 1px solid var(--color-line);
 }
@@ -29,10 +29,7 @@
   overflow: auto;
   padding: 4px 8px;
 }
-.overlay-hunt > .exploration-map {
-  flex: 1 1 60%;
-}
-.overlay-hunt > .exploration-map + .exploration-list {
+.exploration-map + .exploration-list {
   flex: 0 1 auto;
   max-height: 40%;
 }
