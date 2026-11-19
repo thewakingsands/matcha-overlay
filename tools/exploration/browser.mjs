@@ -88,7 +88,7 @@ try {
   await c('Page.enable')
   await c('Emulation.setFocusEmulationEnabled', { enabled: true })
   await c('Page.addScriptToEvaluateOnNewDocument', {
-    source: `(${installExplorationBridge.toString()})()`,
+    source: `(${installExplorationBridge.toString()})(${JSON.stringify(process.env.MATCHA_TEST_MAP_URL ?? null)})`,
   })
   await c('Emulation.setDeviceMetricsOverride', {
     width: 440,
@@ -111,6 +111,10 @@ try {
     '!![...document.querySelectorAll(".treasure-map div")].find(el=>el.shadowRoot)?.shadowRoot.querySelector(".exploration-marker-player")',
   )
   assert.match(await evaluate('document.body.innerText'), /-0.25/)
+  await wait(
+    `[...document.querySelectorAll('.treasure-map div')].some(el=>el.shadowRoot &&
+      [...el.shadowRoot.querySelectorAll('img.leaflet-image-layer')].some(img=>img.alt==='Synthetic field' && img.naturalWidth===2048))`,
+  )
   const mapQueries = await evaluate(
     '__mjt275.commands.filter(x=>x.action==="map.get").length',
   )
@@ -153,11 +157,51 @@ try {
     mapQueries,
     'sampling does not reload map',
   )
+  const layout = `JSON.stringify(['.treasure-card','.treasure-direction','.treasure-guidance > span:last-child'].map(selector=>{
+    const r=document.querySelector(selector).getBoundingClientRect();
+    return [r.x,r.y,r.height]
+  }))`
+  const movingLayout = await evaluate(layout)
+  await evaluate(
+    `__mjt275.emit('NavigationState',{...samples.navigation,guidance:{...samples.navigation.guidance,near:true,relativeDegrees:null}})`,
+  )
+  await wait(
+    `document.querySelector('.treasure-guidance').innerText.includes('已接近')`,
+  )
+  assert.equal(
+    await evaluate(layout),
+    movingLayout,
+    'arrival preserves navigation layout',
+  )
+  assert.equal(
+    await evaluate(transformExpr),
+    dragged,
+    'arrival preserves current map view',
+  )
+  await evaluate(
+    `__mjt275.emit('NavigationState',{...samples.navigation,status:'unavailable',reason:'本人位置不可用',player:null,guidance:null})`,
+  )
+  await wait(
+    `document.querySelector('.treasure-guidance').innerText.includes('本人位置不可用')`,
+  )
+  assert.equal(
+    await evaluate(layout),
+    movingLayout,
+    'position expiry preserves navigation layout',
+  )
+  assert.equal(
+    await evaluate(transformExpr),
+    dragged,
+    'position expiry preserves current map view',
+  )
+  await evaluate(`__mjt275.emit('NavigationState',samples.navigation)`)
   const checks = [
     'Mojito bridge and negative height',
     'incremental player marker',
     'drag preserved during sampling',
     'map resource retained',
+    'map background decoded',
+    'arrival and position expiry preserve layout and map view',
   ]
   const menu = async (name) => {
     await evaluate('document.querySelector(".app-title").click()')

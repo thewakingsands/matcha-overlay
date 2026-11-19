@@ -1,5 +1,5 @@
 /** Synthetic browser-only host. Install with Playwright page.addInitScript(installExplorationBridge). */
-export function installExplorationBridge() {
+export function installExplorationBridge(mapImageUrl) {
   const activationId = 'mjt275-synthetic'
   const context = {
     sessionId: 'synthetic-session',
@@ -23,9 +23,11 @@ export function installExplorationBridge() {
   let port
   const image = (body, width = 2048) =>
     `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${width}" viewBox="0 0 ${width} ${width}">${body}</svg>`)}`
-  const mapImage = image(
-    '<defs><pattern id="grid" width="128" height="128" patternUnits="userSpaceOnUse"><rect width="128" height="128" fill="#363b38"/><path d="M128 0H0V128" fill="none" stroke="#73806e" stroke-width="2"/></pattern></defs><rect width="2048" height="2048" fill="url(#grid)"/><text x="1024" y="200" text-anchor="middle" fill="#c4d2bc" font-size="50">Synthetic map · MJT-275</text>',
-  )
+  const mapImage =
+    mapImageUrl ||
+    image(
+      '<defs><pattern id="grid" width="128" height="128" patternUnits="userSpaceOnUse"><rect width="128" height="128" fill="#363b38"/><path d="M128 0H0V128" fill="none" stroke="#73806e" stroke-width="2"/></pattern></defs><rect width="2048" height="2048" fill="url(#grid)"/><text x="1024" y="200" text-anchor="middle" fill="#c4d2bc" font-size="50">Synthetic map · MJT-275</text>',
+    )
   const icon = image(
     '<path d="M16 1L31 16L16 31L1 16Z" fill="#d3b66b" stroke="#fff"/>',
     32,

@@ -28,6 +28,11 @@ html,
 #title {
   left: 10px;
 }
+#background-status {
+  top: 24px;
+  left: 10px;
+  pointer-events: none;
+}
 #pos {
   right: 10px;
   font-style: italic;

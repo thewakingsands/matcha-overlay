@@ -1,5 +1,12 @@
-import { ArrowUp, LocateFixed } from 'lucide-react'
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { ArrowUp, CircleDot, LocateFixed } from 'lucide-react'
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from 'react'
 import { IconButton } from '#components/ui/button'
 import { Empty } from '#components/ui/controls'
 import { adapter } from '../../../adapter'
@@ -14,6 +21,42 @@ import type { OverlayProps } from '../../interface'
 import { direction, heightDifference } from '../exploration/format'
 import { useTreasureSpot } from './data-source/treasure'
 import './index.css'
+
+function DirectionMarker({
+  relative,
+  near,
+}: {
+  relative: number | null
+  near: boolean
+}) {
+  const gradient = useId()
+  const [angle, setAngle] = useState(relative ?? 0)
+  useLayoutEffect(() => {
+    if (relative !== null) {
+      setAngle((previous) => {
+        const turn = ((((relative - previous + 180) % 360) + 360) % 360) - 180
+        return previous + turn
+      })
+    }
+  }, [relative])
+  return (
+    <span className="treasure-direction" aria-hidden="true">
+      <ArrowUp
+        className={relative === null ? 'treasure-direction-hidden' : undefined}
+        stroke={`url(#${gradient})`}
+        style={{ transform: `rotate(${angle}deg)` }}
+      >
+        <defs>
+          <linearGradient id={gradient} x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0" stopColor="var(--color-fg)" />
+            <stop offset="1" stopColor="var(--color-lime)" />
+          </linearGradient>
+        </defs>
+      </ArrowUp>
+      <CircleDot className={near ? undefined : 'treasure-direction-hidden'} />
+    </span>
+  )
+}
 
 export function TreasureOverlay({
   eventEmitter,
@@ -113,28 +156,21 @@ export function TreasureOverlay({
         {adapter.name === 'Mojito' && (
           <div className="treasure-navigation">
             <span className="treasure-guidance">
-              {nav?.guidance ? (
-                <>
-                  {nav.guidance.relativeDegrees !== null && (
-                    <ArrowUp
-                      aria-label="相对本人朝向"
-                      style={{
-                        transform: `rotate(${nav.guidance.relativeDegrees}deg)`,
-                      }}
-                    />
-                  )}
-                  <span>
-                    {nav.guidance.near
-                      ? '已接近'
-                      : `${direction(nav.guidance.bearingDegrees)} · ${Math.round(nav.guidance.distanceM)} m`}
-                    <span className="treasure-height">
-                      {heightDifference(nav.guidance.heightDifferenceM)}
-                    </span>
-                  </span>
-                </>
-              ) : (
-                nav?.reason || '等待本人位置'
-              )}
+              <DirectionMarker
+                relative={nav?.guidance?.relativeDegrees ?? null}
+                near={nav?.guidance?.near ?? false}
+              />
+              <span>
+                {nav?.guidance
+                  ? nav.guidance.near
+                    ? '已接近'
+                    : `${direction(nav.guidance.bearingDegrees)} · ${Math.round(nav.guidance.distanceM)} m`
+                  : nav?.reason || '等待本人位置'}
+                <span className="treasure-height">
+                  {nav?.guidance &&
+                    heightDifference(nav.guidance.heightDifferenceM)}
+                </span>
+              </span>
             </span>
             <IconButton
               label="重新居中"

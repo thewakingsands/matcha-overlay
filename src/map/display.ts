@@ -7,8 +7,18 @@ type Library = typeof import('@thewakingsands/eorzea-interactive-map')
 type MapMarker = CircleMarker | LeafletMarker
 interface DisplayState {
   map: number | null
-  markers: Map<string, { layer: MapMarker; signature: string }>
+  markers: Map<
+    string,
+    {
+      layer: MapMarker
+      signature: string
+      x: number
+      y: number
+      title: string | undefined
+    }
+  >
   line: Polyline | null
+  linePoints?: MapInfo['line']
   focus: string | null
 }
 const states = new WeakMap<EoMap, DisplayState>()
@@ -71,6 +81,7 @@ export async function displayMap(
     state.markers.clear()
     state.line?.remove()
     state.line = null
+    state.linePoints = undefined
     await instance.loadMapKey(value.map)
     state.map = value.map
     state.focus = null
@@ -91,9 +102,15 @@ export async function displayMap(
     if (!current) {
       const layer = createMarker(instance, marker, library)
       if (!layer) continue
-      current = { layer, signature }
+      current = { layer, signature, x: marker.x, y: marker.y, title: undefined }
       state.markers.set(key, current)
-    } else current.layer.setLatLng(instance.mapToLatLng2D(marker.x, marker.y))
+    } else if (current.x !== marker.x || current.y !== marker.y) {
+      current.layer.setLatLng(instance.mapToLatLng2D(marker.x, marker.y))
+      current.x = marker.x
+      current.y = marker.y
+    }
+    if (marker.title === current.title) continue
+    current.title = marker.title
     if (marker.title) {
       if (current.layer.getTooltip())
         current.layer.setTooltipContent(tooltip(marker.title))
@@ -113,7 +130,8 @@ export async function displayMap(
       state.markers.delete(key)
     }
   }
-  if (value.line) {
+  if (value.line && !samePoints(value.line, state.linePoints)) {
+    state.linePoints = value.line
     const points = value.line.map(({ x, y }) => instance.mapToLatLng2D(x, y))
     if (state.line) state.line.setLatLngs(points)
     else
@@ -124,9 +142,10 @@ export async function displayMap(
         dashArray: '5 5',
         interactive: false,
       }).addTo(instance)
-  } else {
+  } else if (!value.line) {
     state.line?.remove()
     state.line = null
+    state.linePoints = undefined
   }
   const main = markers[0]
   const focus =
@@ -143,4 +162,16 @@ export async function displayMap(
       })
     else instance.setView(points[0], -1, { animate: false })
   }
+}
+
+function samePoints(
+  points: NonNullable<MapInfo['line']>,
+  previous: MapInfo['line'],
+) {
+  return (
+    points.length === previous?.length &&
+    points.every(
+      ({ x, y }, index) => x === previous[index].x && y === previous[index].y,
+    )
+  )
 }

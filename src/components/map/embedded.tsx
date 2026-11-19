@@ -27,6 +27,8 @@ function MapInstance(value: MapInfo) {
     let instance: EoMap | undefined
     let pending: MapInfo | undefined
     let updating = false
+    let backgroundMap: number | undefined
+    let backgroundWatch: AbortController | undefined
     const failed = (error: unknown) => {
       if (disposed) return
       console.error(error)
@@ -37,17 +39,30 @@ function MapInstance(value: MapInfo) {
     if (!element) return
     const shadow = element.shadowRoot ?? element.attachShadow({ mode: 'open' })
     shadow.innerHTML =
-      '<section class="erozea-map-outer"><div class="eorzea-map-glass"></div><div class="eorzea-map-inner" id="eorzea-map"></div><div class="eorzea-map-resize-handler"></div></section><span id="title" class="info"></span>'
+      '<section class="erozea-map-outer"><div class="eorzea-map-glass"></div><div class="eorzea-map-inner" id="eorzea-map"></div><div class="eorzea-map-resize-handler"></div></section><span id="title" class="info"></span><span id="background-status" class="info" role="status" hidden>地图底图不可用</span>'
+    const backgroundStatus = shadow.getElementById(
+      'background-status',
+    ) as HTMLElement
+    let sizeFrame = 0
+    let width = -1
+    let height = -1
     const syncSize = () => {
+      const nextWidth = element.clientWidth
+      const nextHeight = element.clientHeight
+      if (width === nextWidth && height === nextHeight) return
+      width = nextWidth
+      height = nextHeight
       const outer = shadow.querySelector<HTMLElement>(
         '.erozea-map-outer',
       ) as HTMLElement
-      outer.style.width = `${element.clientWidth}px`
-      outer.style.height = `${element.clientHeight}px`
-      instance?.stop()
-      instance?.invalidateSize({ animate: false })
+      outer.style.width = `${width}px`
+      outer.style.height = `${height}px`
+      instance?.invalidateSize({ animate: false, debounceMoveend: true })
     }
-    const resize = new ResizeObserver(syncSize)
+    const resize = new ResizeObserver(() => {
+      cancelAnimationFrame(sizeFrame)
+      sizeFrame = requestAnimationFrame(syncSize)
+    })
     resize.observe(element)
     const initialize = async () => {
       const library = await import('@thewakingsands/eorzea-interactive-map')
@@ -79,7 +94,7 @@ function MapInstance(value: MapInfo) {
         instance.remove()
         return
       }
-      syncSize()
+      map.invalidateSize({ animate: false })
       update.current = (current) => {
         pending = current
         if (updating) return
@@ -100,6 +115,24 @@ function MapInstance(value: MapInfo) {
               library,
               shadow.getElementById('title') as HTMLElement,
             )
+            if (disposed) return
+            if (adapter.name === 'Mojito' && backgroundMap !== next.map) {
+              backgroundMap = next.map
+              backgroundWatch?.abort()
+              backgroundWatch = new AbortController()
+              backgroundStatus.hidden = true
+              const url = library.loader.getMapUrl(map.mapInfo.id)
+              const image = Array.from(
+                shadow.querySelectorAll<HTMLImageElement>(
+                  '.leaflet-overlay-pane img.leaflet-image-layer',
+                ),
+              ).find((layer) => layer.getAttribute('src') === url)
+              if (image)
+                watchBackground(image, url, backgroundWatch.signal, () => {
+                  backgroundStatus.hidden = false
+                })
+              else backgroundStatus.hidden = false
+            }
             if (!disposed) setError(undefined)
           }
         }
@@ -114,6 +147,8 @@ function MapInstance(value: MapInfo) {
     void initialize().catch(failed)
     return () => {
       disposed = true
+      backgroundWatch?.abort()
+      cancelAnimationFrame(sizeFrame)
       session?.dispose()
       update.current = undefined
       resize.disconnect()
@@ -142,4 +177,31 @@ function MapInstance(value: MapInfo) {
       />
     </>
   )
+}
+
+function watchBackground(
+  image: HTMLImageElement,
+  url: string,
+  signal: AbortSignal,
+  failed: () => void,
+) {
+  if (image.complete && image.naturalWidth > 0) return
+  let retried = false
+  const retry = () => {
+    if (retried) {
+      failed()
+      return
+    }
+    retried = true
+    // Let other map resources finish before requesting the same authorized image again.
+    const timer = setTimeout(() => {
+      if (!signal.aborted) {
+        image.removeAttribute('src')
+        image.src = url
+      }
+    }, 250)
+    signal.addEventListener('abort', () => clearTimeout(timer), { once: true })
+  }
+  image.addEventListener('error', retry, { signal })
+  if (image.complete) retry()
 }
