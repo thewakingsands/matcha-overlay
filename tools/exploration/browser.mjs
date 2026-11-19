@@ -123,12 +123,15 @@ try {
   await wait(
     `${shadowExpr}.querySelector('.leaflet-marker-pane [data-data-type="1"]') !== null`,
   )
+  await wait(
+    `${shadowExpr}.querySelector('.leaflet-popup-pane img.leaflet-marker-icon') !== null`,
+  )
   const entranceQueries = await evaluate(
     '__mjt275.commands.filter(x=>x.action==="map.key").length',
   )
   await evaluate(`{
     const shadow=${shadowExpr};
-    window.treasureBeforeEntrance=shadow.querySelector('.leaflet-marker-pane img:not([data-data-type])');
+    window.treasureBeforeEntrance=shadow.querySelector('.leaflet-popup-pane img.leaflet-marker-icon');
     shadow.querySelector('.leaflet-marker-pane [data-data-type="1"]').click();
   }`)
   await new Promise((r) => setTimeout(r, 250))
@@ -324,7 +327,7 @@ try {
       }
       if (mode === '优雷卡') {
         const bounds = await evaluate(
-          `(()=>{const host=[...document.querySelectorAll('.exploration-map div')].find(el=>el.shadowRoot),r=host.getBoundingClientRect(),p=host.shadowRoot.querySelector('.leaflet-marker-icon').getBoundingClientRect();return {left:p.x-r.x,top:p.y-r.y,width:r.width,height:r.height,markerWidth:p.width,markerHeight:p.height}})()`,
+          `(()=>{const host=[...document.querySelectorAll('.exploration-map div')].find(el=>el.shadowRoot),r=host.getBoundingClientRect(),p=host.shadowRoot.querySelector('.leaflet-popup-pane img.leaflet-marker-icon').getBoundingClientRect();return {left:p.x-r.x,top:p.y-r.y,width:r.width,height:r.height,markerWidth:p.width,markerHeight:p.height}})()`,
         )
         assert(
           bounds.left >= 0 &&
