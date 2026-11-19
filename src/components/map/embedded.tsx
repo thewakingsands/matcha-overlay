@@ -40,6 +40,16 @@ function MapInstance(value: MapInfo) {
     const shadow = element.shadowRoot ?? element.attachShadow({ mode: 'open' })
     shadow.innerHTML =
       '<section class="erozea-map-outer"><div class="eorzea-map-glass"></div><div class="eorzea-map-inner" id="eorzea-map"></div><div class="eorzea-map-resize-handler"></div></section><span id="title" class="info"></span><span id="background-status" class="info" role="status" hidden>地图底图不可用</span>'
+    const mapElement = shadow.getElementById('eorzea-map') as HTMLElement
+    const blockMapLink = (event: MouseEvent) => {
+      // The library delegates type-1 marker clicks to a map change outside MapInfo.
+      if (
+        event.target instanceof Element &&
+        event.target.closest('[data-data-type="1"]')
+      )
+        event.stopPropagation()
+    }
+    mapElement.addEventListener('click', blockMapLink, true)
     const backgroundStatus = shadow.getElementById(
       'background-status',
     ) as HTMLElement
@@ -86,9 +96,7 @@ function MapInstance(value: MapInfo) {
       sheet.replaceSync(css)
       shadow.adoptedStyleSheets = [sheet]
       syncSize()
-      const map = await library.create(
-        shadow.getElementById('eorzea-map') as HTMLElement,
-      )
+      const map = await library.create(mapElement)
       instance = map
       if (disposed) {
         instance.remove()
@@ -151,6 +159,7 @@ function MapInstance(value: MapInfo) {
       cancelAnimationFrame(sizeFrame)
       session?.dispose()
       update.current = undefined
+      mapElement.removeEventListener('click', blockMapLink, true)
       resize.disconnect()
       instance?.remove()
     }

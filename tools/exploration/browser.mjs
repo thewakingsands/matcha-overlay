@@ -118,6 +118,29 @@ try {
   const mapQueries = await evaluate(
     '__mjt275.commands.filter(x=>x.action==="map.get").length',
   )
+  const shadowExpr =
+    '[...document.querySelectorAll(".treasure-map div")].find(el=>el.shadowRoot)?.shadowRoot'
+  await wait(
+    `${shadowExpr}.querySelector('.leaflet-marker-pane [data-data-type="1"]') !== null`,
+  )
+  const entranceQueries = await evaluate(
+    '__mjt275.commands.filter(x=>x.action==="map.key").length',
+  )
+  await evaluate(`{
+    const shadow=${shadowExpr};
+    window.treasureBeforeEntrance=shadow.querySelector('.leaflet-marker-pane img:not([data-data-type])');
+    shadow.querySelector('.leaflet-marker-pane [data-data-type="1"]').click();
+  }`)
+  await new Promise((r) => setTimeout(r, 250))
+  assert.equal(
+    await evaluate('__mjt275.commands.filter(x=>x.action==="map.key").length'),
+    entranceQueries,
+    'entrance markers do not request another map',
+  )
+  assert.ok(
+    await evaluate('window.treasureBeforeEntrance?.isConnected'),
+    'entrance clicks preserve the treasure marker',
+  )
   const transformExpr =
     '[...document.querySelectorAll(".treasure-map div")].find(el=>el.shadowRoot)?.shadowRoot.querySelector(".leaflet-map-pane").style.transform'
   await c('Input.dispatchMouseEvent', {
@@ -201,6 +224,7 @@ try {
     'drag preserved during sampling',
     'map resource retained',
     'map background decoded',
+    'entrance clicks preserve the map and treasure marker',
     'arrival and position expiry preserve layout and map view',
   ]
   const menu = async (name) => {

@@ -95,11 +95,20 @@ export function installExplorationBridge(mapImageUrl) {
           placeName: 'Synthetic field',
         }
       case 'map.key':
-        return 1
+        return value.id === 'synthetic/01' ? 2 : 1
       case 'map.image':
         return mapImage
       case 'map.markers':
-        return []
+        return [
+          {
+            x: 18,
+            y: 19,
+            icon: 60561,
+            orientation: 1,
+            dataType: 1,
+            dataKey: 'synthetic/01',
+          },
+        ]
       case 'map.icon':
         return icon
       case 'http':
