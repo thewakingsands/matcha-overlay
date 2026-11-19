@@ -257,6 +257,12 @@ try {
       )
     if (mode === '狩猎') {
       await new Promise((r) => setTimeout(r, 300))
+      assert(
+        await evaluate(
+          `(()=>{const panel=document.querySelector('.overlay-hunt'),map=panel.querySelector('.exploration-map');return map.clientHeight>=panel.clientHeight*.6-1})()`,
+        ),
+        'a short hunt list leaves at least 60% of the panel for the map',
+      )
       assert.equal(
         await evaluate('document.querySelector("details").open'),
         false,
@@ -371,6 +377,7 @@ try {
     'disconnect clears dynamic state',
     'visible map and treasure details',
     'selected hunt centered across resize',
+    'short hunt list leaves space for the map',
     'initial NM visible without selection',
   )
   assert.deepEqual(errors, [])

@@ -29,6 +29,13 @@
   overflow: auto;
   padding: 4px 8px;
 }
+.overlay-hunt > .exploration-map {
+  flex: 1 1 60%;
+}
+.overlay-hunt > .exploration-map + .exploration-list {
+  flex: 0 1 auto;
+  max-height: 40%;
+}
 .exploration-row {
   display: flex;
   flex-direction: column;

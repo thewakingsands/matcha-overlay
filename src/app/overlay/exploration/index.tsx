@@ -129,7 +129,10 @@ export function HuntOverlay({ active }: OverlayProps) {
     </button>
   )
   return (
-    <section className="overlay overlay-exploration" aria-label="狩猎观察">
+    <section
+      className="overlay overlay-exploration overlay-hunt"
+      aria-label="狩猎观察"
+    >
       {map && (
         <div className="exploration-map">
           <EorzeaMap {...map} />
@@ -149,7 +152,7 @@ export function HuntOverlay({ active }: OverlayProps) {
           </details>
         )}
         {hunts?.status === 'ready' && !entries.length && (
-          <Empty>当前区域尚未观察到狩猎目标</Empty>
+          <p className="exploration-status">当前区域尚未观察到狩猎目标</p>
         )}
       </div>
     </section>
