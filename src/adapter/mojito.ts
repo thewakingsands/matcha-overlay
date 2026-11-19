@@ -1,4 +1,5 @@
 import type { Value } from '@ffcafe/mojito-plugin-sdk'
+import { PluginError } from '@ffcafe/mojito-plugin-sdk/errors'
 import type { ViewBridge } from '@ffcafe/mojito-plugin-sdk/view'
 import type { MapDataProvider } from '@thewakingsands/eorzea-interactive-map'
 import {
@@ -223,9 +224,7 @@ export function updateSourceData(value: Value) {
     updateState({ mapGeneration: mapDataGeneration })
     clearClientCatalog()
     catalogRequest = undefined
-    void refreshCatalog().catch((error) =>
-      setSourceStatus('error', String(error)),
-    )
+    void refreshCatalog()
     for (const listener of mapDataListeners) listener()
   }
   if (!value || typeof value !== 'object' || !('dataSourceInfo' in value))
@@ -280,17 +279,30 @@ async function refreshCatalog() {
     const generation = mapDataGeneration
     const connection = bridge,
       signal = lifetime.signal
+    const current = () =>
+      !signal.aborted &&
+      bridge === connection &&
+      generation === mapDataGeneration
     const request = command('data.catalog')
+      .catch((error) => {
+        if (!current()) return null
+        // A session change can cancel the worker's previous shared catalog read.
+        if (
+          error instanceof PluginError &&
+          (error.code === 'cancelled' || error.code === 'stale_session')
+        )
+          return command('data.catalog')
+        throw error
+      })
       .then((value) => {
-        signal.throwIfAborted()
-        if (bridge !== connection || generation !== mapDataGeneration) return
+        if (!current()) return
         applyClientCatalog(value as unknown as ClientCatalog)
         setSourceStatus('connected', '')
         updateState({ mapGeneration: generation })
       })
-      .catch((error) => {
+      .catch(() => {
         if (catalogRequest === request) catalogRequest = undefined
-        throw error
+        if (current()) setSourceStatus('error', '客户端游戏资料暂不可用')
       })
     catalogRequest = request
   }
@@ -362,9 +374,7 @@ export async function prepareSource() {
   try {
     await Promise.all([changes.ready, clock.ready])
     await hydrateStorage(touched)
-    await refreshCatalog().catch(() =>
-      setSourceStatus('error', '客户端游戏资料暂不可用'),
-    )
+    await refreshCatalog()
     signal.throwIfAborted()
   } catch (error) {
     changes.dispose()

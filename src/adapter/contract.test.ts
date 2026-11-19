@@ -1,4 +1,5 @@
 import type { BatchListener, Value } from '@ffcafe/mojito-plugin-sdk'
+import { pluginError } from '@ffcafe/mojito-plugin-sdk/errors'
 import type { ViewBridge } from '@ffcafe/mojito-plugin-sdk/view'
 import { afterEach, expect, it, vi } from 'vitest'
 import type { MapLibrary } from './types'
@@ -323,6 +324,46 @@ it('refreshes catalogs when client data changes and rejects late results after d
   })
   await new Promise((resolve) => setTimeout(resolve, 0))
   expect(FishingCatalog.fish).toEqual({})
+})
+
+it('keeps a cancelled old catalog request from overriding the new view status', async () => {
+  const f = fixture()
+  const { adapter } = await import('./mojito')
+  await adapter.prepare()
+  let cancelOld!: () => void
+  f.command.mockImplementationOnce(
+    () =>
+      new Promise((_resolve, reject) => {
+        cancelOld = () => reject(pluginError('cancelled'))
+      }),
+  )
+  await f.emit('matcha.status', [{ mapDataGeneration: 42 }])
+  await f.emit('matcha.status', [{ mapDataGeneration: 43 }])
+  await vi.waitFor(() => expect(adapter.getState().status).toBe('connected'))
+  cancelOld()
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  expect(adapter.getState()).toMatchObject({
+    status: 'connected',
+    mapGeneration: 43,
+  })
+  adapter.dispose()
+})
+
+it('retries client catalog loading if the current request crosses a source reset', async () => {
+  const f = fixture()
+  const { adapter } = await import('./mojito')
+  const { FishingCatalog } = await import('../data/fishing')
+  await adapter.prepare()
+  f.command.mockClear()
+  f.command.mockRejectedValueOnce(pluginError('cancelled'))
+  await f.emit('matcha.status', [{ mapDataGeneration: 42 }])
+  await vi.waitFor(() => expect(FishingCatalog.fish).toEqual({ 1: '客户端鱼' }))
+  expect(f.command).toHaveBeenCalledTimes(2)
+  expect(adapter.getState()).toMatchObject({
+    status: 'connected',
+    mapGeneration: 42,
+  })
+  adapter.dispose()
 })
 
 it('restores optional exploration states through the adapter and clears them on Reset and disposal', async () => {
