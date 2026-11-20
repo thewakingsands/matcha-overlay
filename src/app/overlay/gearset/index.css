@@ -119,8 +119,16 @@
   display: inline-flex;
   gap: 1px;
 }
-.gear-materia img {
+.gear-materia img,
+.gear-materia canvas,
+.gear-materia-text {
+  width: 18px;
   height: 18px;
+}
+.gear-materia-text {
+  text-align: center;
+  font-size: 11px;
+  line-height: 18px;
 }
 
 .gearset-item-animated {

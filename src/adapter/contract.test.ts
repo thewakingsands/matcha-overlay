@@ -1,5 +1,4 @@
 import type { BatchListener, Value } from '@ffcafe/mojito-plugin-sdk'
-import { pluginError } from '@ffcafe/mojito-plugin-sdk/errors'
 import type { ViewBridge } from '@ffcafe/mojito-plugin-sdk/view'
 import { afterEach, expect, it, vi } from 'vitest'
 import type { MapLibrary } from './types'
@@ -327,6 +326,7 @@ it('refreshes catalogs when client data changes and rejects late results after d
 })
 
 it('keeps a cancelled old catalog request from overriding the new view status', async () => {
+  const { pluginError } = await import('@ffcafe/mojito-plugin-sdk/errors')
   const f = fixture()
   const { adapter } = await import('./mojito')
   await adapter.prepare()
@@ -350,6 +350,7 @@ it('keeps a cancelled old catalog request from overriding the new view status', 
 })
 
 it('retries client catalog loading if the current request crosses a source reset', async () => {
+  const { pluginError } = await import('@ffcafe/mojito-plugin-sdk/errors')
   const f = fixture()
   const { adapter } = await import('./mojito')
   const { FishingCatalog } = await import('../data/fishing')

@@ -308,6 +308,12 @@ async function refreshCatalog() {
   }
   return catalogRequest
 }
+export async function queryMateriaAtlas() {
+  return command('gearset.materiaAtlas') as Promise<{
+    url: string
+    scale: 1 | 2
+  } | null>
+}
 export async function queryItems(ids: number[]) {
   return command('item.get', { ids }) as unknown as Promise<
     (import('../lib/store/item').ItemRecord & { id: number })[]

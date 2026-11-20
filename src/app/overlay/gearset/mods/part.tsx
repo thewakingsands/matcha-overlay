@@ -8,6 +8,7 @@ import {
   queryItem,
 } from '../../../../lib/store/item'
 import type { GearsetDTO, GearsetMateria } from '../interface'
+import { type MateriaAtlas, MateriaSlot } from './materia-atlas'
 
 const materiaMap = [
   '', // Skip index 0
@@ -54,10 +55,12 @@ const tierNumbers = [
 ]
 
 function Materias({
+  atlas,
   materias,
   slot,
   overmeld,
 }: {
+  atlas: MateriaAtlas | null
   materias: GearsetMateria[]
   slot: number
   overmeld: boolean
@@ -81,8 +84,9 @@ function Materias({
 
     icons.push({
       id: `${i}-${type}-${tier}`,
-      icon: `icon/materia/slot_${i >= slot ? 'overmeld' : 'normal'}_grade${tier.toString().padStart(2, '0')}.png`,
-      name: `${materiaMap[type]}魔晶石${tierNumbers[tier]}型`,
+      overmeld: i >= slot,
+      tier,
+      name: `${materiaMap[type]}魔晶石${tierNumbers[tier] ?? tier + 1}型`,
     })
   }
 
@@ -90,7 +94,8 @@ function Materias({
   for (let i = icons.length; i < maxMateria; ++i) {
     icons.push({
       id: `${i}-empty`,
-      icon: `icon/materia/slot_${i >= slot ? 'overmeld' : 'normal'}_empty.png`,
+      overmeld: i >= slot,
+      tier: null,
       name: '未镶嵌',
     })
   }
@@ -101,14 +106,15 @@ function Materias({
 
   return (
     <>
-      {icons.map(({ id, name, icon }) => (
-        <img key={id} alt={name} src={icon} />
+      {icons.map(({ id, ...slot }) => (
+        <MateriaSlot key={id} atlas={atlas} {...slot} />
       ))}
     </>
   )
 }
 
 type Props = {
+  atlas: MateriaAtlas | null
   part?: GearsetDTO
   language: string
 }
@@ -121,7 +127,7 @@ export function GearsetPart(props: Props) {
   return <Part key={mapGeneration} {...props} />
 }
 
-function Part({ part, language }: Props) {
+function Part({ part, language, atlas }: Props) {
   const [record, setRecord] = useState<ItemRecord | null>()
   const [glamour, setGlamour] = useState<ItemRecord | null>()
   const [error, setError] = useState<string | null>(null)
@@ -199,6 +205,7 @@ function Part({ part, language }: Props) {
           </span>
           <span className="gear-materia">
             <Materias
+              atlas={atlas}
               materias={part.materias}
               slot={record ? record.s : 5}
               overmeld={record ? !!record.a : false}

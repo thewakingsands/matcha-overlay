@@ -1,6 +1,8 @@
 import 'dotenv/config'
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import { existsSync, readFileSync } from 'fs'
+import { glob, unlink } from 'node:fs/promises'
+import { join } from 'node:path'
 import tailwindcss from '@tailwindcss/vite'
 
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'))
@@ -16,11 +18,17 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     tailwindcss(),
     ...(mode === 'mojito' ? [{
-      name: 'mojito-html',
+      name: 'mojito-assets',
+      async writeBundle({ dir }) {
+        if (!dir) return
+        for await (const file of glob('icon/materia/slot_*.png', { cwd: dir })) {
+          await unlink(join(dir, file))
+        }
+      },
       transformIndexHtml(html: string) {
         return html.replace(/<script[^>]*src="https:\/\/www.googletagmanager.com[^>]*><\/script>/g, '').replace(/<script>\s*window\.dataLayer[\s\S]*?<\/script>/g, '')
       },
-    }] : []),
+    } satisfies Plugin] : []),
   ],
   build: {
     assetsInlineLimit: mode === 'mojito' ? 0 : 4096,

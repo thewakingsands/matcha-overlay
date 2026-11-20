@@ -4,6 +4,7 @@ import { Empty, SegmentedControl } from '#components/ui/controls'
 import type { OverlayProps } from '../../interface'
 import type { GearsetDTO } from './interface'
 import { AvgLevel } from './mods/avg-ilvl'
+import { type MateriaAtlas, useMateriaAtlas } from './mods/materia-atlas'
 import { GearsetPart } from './mods/part'
 import './index.css'
 import { useEvent } from '../../../lib/event'
@@ -16,11 +17,13 @@ function Gearset({
   list,
   language,
   empty,
+  atlas,
 }: {
   title: string
   list: List<GearsetDTO>
   language: string
   empty: string
+  atlas: MateriaAtlas | null
 }) {
   return (
     <section className="gearset">
@@ -35,6 +38,7 @@ function Gearset({
           {[...leftSlots, ...rightSlots].map((index) => (
             <GearsetPart
               key={index}
+              atlas={atlas}
               part={list.get(index)}
               language={language}
             />
@@ -87,6 +91,9 @@ export function GearsetOverlay({
     })
   })
 
+  const atlas = useMateriaAtlas(
+    active && (!mine.isEmpty() || !others.isEmpty()),
+  )
   if (!active) return null
 
   return (
@@ -103,12 +110,14 @@ export function GearsetOverlay({
       />
       <div className="gearset-columns">
         <Gearset
+          atlas={atlas}
           title="他人装备"
           language={language}
           list={others}
           empty="查看其他玩家的装备后显示在这里"
         />
         <Gearset
+          atlas={atlas}
           title="我的装备"
           language={language}
           list={mine}
