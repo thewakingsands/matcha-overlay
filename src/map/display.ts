@@ -24,11 +24,6 @@ interface DisplayState {
   focus: string | null
   /** Set once the map covers its frame; the width a panel takes on the right */
   insetRight?: number
-  /** The limits last given to the map, and the frame the last focus was worked out for */
-  limits?: string
-  frame?: string
-  /** The user has dragged or zoomed the map since the last focus */
-  moved?: boolean
 }
 const playerHtml =
   '<svg class="map-player-cone" viewBox="-22 -22 44 44"><defs><radialGradient id="map-player-cone"><stop offset="0.25" stop-color="#86d8ff" stop-opacity="0.55"/><stop offset="1" stop-color="#86d8ff" stop-opacity="0"/></radialGradient></defs><path d="M0 0 L-12 -20 A23 23 0 0 1 12 -20 Z" fill="url(#map-player-cone)"/></svg><span class="map-player-dot"></span>'
@@ -111,16 +106,11 @@ export async function displayMap(
     if (state.insetRight === undefined) {
       instance.options.maxBoundsViscosity = 1
       instance.on('zoomend resize', () => cover(instance, state))
-      const moved = () => {
-        state.moved = true
-      }
-      instance.on('dragstart', moved)
-      instance
-        .getContainer()
-        .addEventListener('wheel', moved, { passive: true })
     }
-    state.insetRight = value.viewport.insetRight
-    cover(instance, state)
+    if (state.insetRight !== value.viewport.insetRight) {
+      state.insetRight = value.viewport.insetRight
+      cover(instance, state)
+    }
   }
   const markers = value.markers ?? []
   const keys = new Set<string>()
@@ -229,18 +219,10 @@ export async function displayMap(
     value.focus ??
     (main ? { key: `${main.x}:${main.y}`, points: [main] } : null)
   const size = instance.getSize?.()
-  const frame = `${size?.x}:${size?.y}:${value.viewport?.insetRight}`
-  // A frame that has changed size is focused again, unless the user has moved the map since.
-  if (
-    focus &&
-    value.viewport &&
-    (focus.key !== state.focus || (frame !== state.frame && !state.moved))
-  ) {
+  if (focus && focus.key !== state.focus && value.viewport) {
     // A frame without a size yet is focused by the next update.
     if (!size?.x || !size.y) return
     state.focus = focus.key
-    state.frame = frame
-    state.moved = false
     const point = ({ x, y }: { x: number; y: number }) =>
       instance.mapToLatLng2D(x, y) as MapPoint
     const view = frameView(
@@ -274,14 +256,9 @@ export async function displayMap(
 function cover(instance: EoMap, state: DisplayState) {
   const { x, y } = instance.getSize()
   if (!x || !y) return
-  const minimum = coverZoom(x, y)
-  if (instance.options.minZoom !== minimum) instance.setMinZoom(minimum)
+  instance.setMinZoom(coverZoom(x, y))
   const bounds = viewBounds(state.insetRight ?? 0, instance.getZoom())
   instance.panInsideBounds(bounds, { animate: false })
-  // Every update comes through here, so that a map that missed its limits once gets them with the next one.
-  const limits = JSON.stringify(bounds)
-  if (limits === state.limits) return
-  state.limits = limits
   instance.setMaxBounds(bounds)
 }
 

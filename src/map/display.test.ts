@@ -87,13 +87,7 @@ it('recenters only when explicitly requested or an old unkeyed target changes', 
 })
 
 function coveringMap(size: { x: number; y: number }) {
-  const handlers: Record<string, (() => void)[]> = {}
-  const listen = (names: string, handler: () => void) => {
-    for (const name of names.split(' ')) {
-      handlers[name] ??= []
-      handlers[name].push(handler)
-    }
-  }
+  const handlers: (() => void)[] = []
   const map = {
     loadMapKey: vi.fn(),
     mapInfo: {},
@@ -103,13 +97,10 @@ function coveringMap(size: { x: number; y: number }) {
     zoom: -1,
     getSize: () => size,
     getZoom: () => map.zoom,
-    getContainer: () => ({ addEventListener: listen }),
-    setMinZoom: vi.fn((zoom: number) => {
-      map.options.minZoom = zoom
-    }),
+    setMinZoom: vi.fn(),
     setMaxBounds: vi.fn(),
     panInsideBounds: vi.fn(),
-    on: vi.fn(listen),
+    on: vi.fn((_: string, handler: () => void) => handlers.push(handler)),
     setView: vi.fn((_: unknown, zoom: number) => {
       map.zoom = zoom
     }),
@@ -119,8 +110,8 @@ function coveringMap(size: { x: number; y: number }) {
   return {
     map,
     library,
-    fire: (name: string) => {
-      for (const handler of handlers[name] ?? []) handler()
+    fire: () => {
+      for (const handler of handlers) handler()
     },
   }
 }
@@ -134,9 +125,7 @@ it('covers the frame: zooms out only until the map fills it, also after the fram
     focus: { key: 'a', points: [{ x: 1024, y: 1024 }] },
     viewport: { cover: true as const, insetRight: 183 },
   }
-  const show = () =>
-    displayMap(map as unknown as EoMap, value, library as never, title)
-  await show()
+  await displayMap(map as unknown as EoMap, value, library as never, title)
   const initial = Math.log2(440 / 2048)
   expect(map.setMinZoom).toHaveBeenLastCalledWith(initial)
   expect(map.options.maxBoundsViscosity).toBe(1)
@@ -154,75 +143,17 @@ it('covers the frame: zooms out only until the map fills it, also after the fram
     [0, 0],
     [2048, 2048 + 366],
   ])
-  // The same update again neither moves the map nor sets its limits again.
-  const limits = map.setMaxBounds.mock.calls.length
-  await show()
-  expect(map.setView).toHaveBeenCalledTimes(1)
-  expect(map.setMinZoom).toHaveBeenCalledTimes(1)
-  expect(map.setMaxBounds).toHaveBeenCalledTimes(limits)
-
   size.x = 900
-  fire('resize')
+  fire()
   expect(map.setMinZoom).toHaveBeenLastCalledWith(Math.log2(900 / 2048))
   size.x = 440
-  fire('resize')
+  fire()
   expect(map.setMinZoom).toHaveBeenLastCalledWith(initial)
-})
-
-it('gives a map that missed its limits once the limits with the next update', async () => {
-  // The frame has no size when the map is first shown.
-  const size = { x: 0, y: 0 }
-  const { map, library } = coveringMap(size)
-  const title = { textContent: '', hidden: false } as HTMLElement
-  const value = {
-    map: 1,
-    focus: { key: 'a', points: [] },
-    viewport: { cover: true as const, insetRight: 0 },
-  }
-  const show = () =>
-    displayMap(map as unknown as EoMap, value, library as never, title)
-  await show()
-  expect(map.setMinZoom).not.toHaveBeenCalled()
-  expect(map.setView).not.toHaveBeenCalled()
-  size.x = 440
-  size.y = 358
-  await show()
-  expect(map.setMinZoom).toHaveBeenLastCalledWith(Math.log2(440 / 2048))
+  // The same update again neither moves the map nor computes the bounds again.
+  const calls = map.setMaxBounds.mock.calls.length
+  await displayMap(map as unknown as EoMap, value, library as never, title)
   expect(map.setView).toHaveBeenCalledTimes(1)
-})
-
-it('focuses again when the frame changes size, unless the user has moved the map', async () => {
-  const size = { x: 440, y: 358 }
-  const { map, library, fire } = coveringMap(size)
-  const title = { textContent: '', hidden: false } as HTMLElement
-  const show = (key: string) =>
-    displayMap(
-      map as unknown as EoMap,
-      {
-        map: 1,
-        focus: { key, points: [{ x: 1024, y: 1024 }] },
-        viewport: { cover: true as const, insetRight: 183 },
-      },
-      library as never,
-      title,
-    )
-  await show('first')
-  size.x = 640
-  await show('first')
-  expect(map.setView).toHaveBeenCalledTimes(2)
-  for (const event of ['dragstart', 'wheel']) {
-    const views = map.setView.mock.calls.length
-    fire(event)
-    size.x += 10
-    await show(views === 2 ? 'first' : 'dragstart')
-    expect(map.setView).toHaveBeenCalledTimes(views)
-    // A new focus is always followed, and the frame is watched again after it.
-    await show(event)
-    expect(map.setView).toHaveBeenCalledTimes(views + 1)
-    size.x += 10
-    await show(event)
-    expect(map.setView).toHaveBeenCalledTimes(views + 2)
-  }
+  expect(map.setMaxBounds).toHaveBeenCalledTimes(calls)
 })
 
 it('leaves the drag range and the zoom limits alone without a viewport', async () => {
