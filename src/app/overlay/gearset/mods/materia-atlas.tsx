@@ -41,7 +41,8 @@ export function useMateriaAtlas(active: boolean) {
   return active && loaded?.generation === mapGeneration ? loaded : null
 }
 
-// Verified against global client 7.58. Coordinates use 24px cells; overmelds are one row below.
+// Verified against Global 7.58 and the Chinese client 2026.11.03.0000.0000.
+// Coordinates use 24px cells. Overmelds are one row below.
 const tierOrigins = [
   [96, 12],
   [72, 12],
