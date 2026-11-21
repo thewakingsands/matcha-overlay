@@ -42,16 +42,19 @@ html,
 }
 
 .marker-tooltip {
-  background: #0008;
-  color: #fff;
+  background: oklch(0.2 0.02 270 / 0.9);
+  color: oklch(0.97 0.005 270);
   border: 0;
-  padding: 0 10px;
-  margin-bottom: 10px;
-  box-shadow: none;
+  padding: 1px 6px;
+  margin-bottom: 6px;
+  box-shadow: 0 1px 3px oklch(0 0 0 / 0.4);
 
-  font-size: 14px;
-  line-height: 24px;
-  border-radius: 12px;
+  font:
+    12px / 18px "Geist Variable",
+    "Microsoft YaHei UI",
+    "Microsoft YaHei",
+    sans-serif;
+  border-radius: 6px;
 }
 
 .marker-tooltip::before {
@@ -61,4 +64,61 @@ html,
 .marker-tooltip .icon {
   font-size: 0.75em;
   margin-left: 2px;
+}
+
+/* The player: a dot, and a cone towards where they face */
+.map-player {
+  pointer-events: none;
+}
+.map-player-cone {
+  position: absolute;
+  left: -22px;
+  top: -22px;
+  width: 44px;
+  height: 44px;
+}
+.map-player-dot {
+  position: absolute;
+  left: -6px;
+  top: -6px;
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  border: 2px solid oklch(0.2 0.02 270);
+  border-radius: 50%;
+  background: #86d8ff;
+  box-shadow: 0 0 0 1px #86d8ff;
+}
+.map-marker-ring {
+  border-radius: 50%;
+  outline: 2px solid oklch(0.86 0.17 125);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 8px oklch(0 0 0 / 0.35);
+}
+
+/* A map that covers its frame: opaque behind the image, with the reason while there is none */
+.map-cover .eorzea-map-glass,
+.map-cover ~ #background-status {
+  display: none;
+}
+.map-cover .eorzea-map-inner {
+  background: oklch(0.18 0.015 270);
+}
+.map-cover .eorzea-map-inner::before {
+  content: "正在读取地图资料";
+  position: absolute;
+  inset: 0 var(--map-inset, 0px) 0 0;
+  display: grid;
+  place-items: center;
+  /* Below the middle, where the player is drawn */
+  padding-top: 64px;
+  color: oklch(0.72 0.014 270);
+  font:
+    13px / 1.5 "Geist Variable",
+    "Microsoft YaHei UI",
+    "Microsoft YaHei",
+    sans-serif;
+}
+.map-cover.map-background-failed .eorzea-map-inner::before {
+  content: "地图底图不可用";
 }

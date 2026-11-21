@@ -2,6 +2,7 @@ import type { EoMap } from '@thewakingsands/eorzea-interactive-map'
 import type { CircleMarker, Marker as LeafletMarker, Polyline } from 'leaflet'
 import type { MapInfo } from '../components/map'
 import type { Marker } from './interface'
+import { coverZoom, frameView, type MapPoint, viewBounds } from './viewport'
 
 type Library = typeof import('@thewakingsands/eorzea-interactive-map')
 type MapMarker = CircleMarker | LeafletMarker
@@ -21,7 +22,11 @@ interface DisplayState {
   line: Polyline | null
   linePoints?: MapInfo['line']
   focus: string | null
+  /** Set once the map covers its frame; the width a panel takes on the right */
+  insetRight?: number
 }
+const playerHtml =
+  '<svg class="map-player-cone" viewBox="-22 -22 44 44"><defs><radialGradient id="map-player-cone"><stop offset="0.25" stop-color="#86d8ff" stop-opacity="0.55"/><stop offset="1" stop-color="#86d8ff" stop-opacity="0"/></radialGradient></defs><path d="M0 0 L-12 -20 A23 23 0 0 1 12 -20 Z" fill="url(#map-player-cone)"/></svg><span class="map-player-dot"></span>'
 const states = new WeakMap<EoMap, DisplayState>()
 const escaped = (value: string) =>
   value.replace(
@@ -42,15 +47,23 @@ function createMarker(
   marker: Marker,
   library: Pick<Library, 'loader' | 'simpleMarker' | 'L'>,
 ) {
-  if (
-    marker.kind === 'player' ||
-    marker.kind === 'observed' ||
-    marker.kind === 'history'
-  ) {
+  if (marker.kind === 'player')
+    return library.L.marker(instance.mapToLatLng2D(marker.x, marker.y), {
+      icon: library.L.divIcon({
+        className: 'map-player',
+        html: playerHtml,
+        iconSize: [0, 0],
+      }),
+      interactive: false,
+      keyboard: false,
+      pane: 'popupPane',
+      zIndexOffset: 2000,
+    }).addTo(instance)
+  if (marker.kind === 'observed' || marker.kind === 'history') {
     return library.L.circleMarker(instance.mapToLatLng2D(marker.x, marker.y), {
-      radius: marker.kind === 'player' ? 5 : 7,
-      color: marker.kind === 'player' ? '#86d8ff' : '#f4e6b2',
-      fillColor: marker.kind === 'player' ? '#86d8ff' : '#e9cd73',
+      radius: 7,
+      color: '#f4e6b2',
+      fillColor: '#e9cd73',
       fillOpacity: marker.kind === 'history' ? 0 : 1,
       weight: 2,
       className: `exploration-marker-${marker.kind}`,
@@ -88,6 +101,17 @@ export async function displayMap(
     state.focus = null
     title.textContent = instance.mapInfo.placeName ?? ''
   }
+  if (value.viewport) {
+    title.hidden = true
+    if (state.insetRight === undefined) {
+      instance.options.maxBoundsViscosity = 1
+      instance.on('zoomend resize', () => cover(instance, state))
+    }
+    if (state.insetRight !== value.viewport.insetRight) {
+      state.insetRight = value.viewport.insetRight
+      cover(instance, state)
+    }
+  }
   const markers = value.markers ?? []
   const keys = new Set<string>()
   for (const [index, marker] of markers.entries()) {
@@ -117,6 +141,19 @@ export async function displayMap(
       current.x = marker.x
       current.y = marker.y
     }
+    if (marker.kind === 'player') {
+      const cone = (current.layer as LeafletMarker)
+        .getElement()
+        ?.querySelector<SVGElement>('.map-player-cone')
+      if (cone) {
+        const heading = marker.headingDegrees ?? null
+        cone.style.display = heading === null ? 'none' : ''
+        if (heading !== null) cone.style.transform = `rotate(${heading}deg)`
+      }
+    } else if (marker.ring !== undefined)
+      (current.layer as LeafletMarker)
+        .getElement()
+        ?.classList.toggle('map-marker-ring', marker.ring)
     const compact = marker.compact ?? false
     if (
       compact !== current.compact &&
@@ -147,6 +184,8 @@ export async function displayMap(
           .bindTooltip(tooltip(marker.title), {
             permanent: true,
             direction: 'top',
+            // Above the marker rather than across its upper half.
+            offset: [0, marker.icon ? (marker.ring ? -21 : -16) : -8],
             className: 'marker-tooltip',
           })
           .openTooltip()
@@ -179,7 +218,28 @@ export async function displayMap(
   const focus =
     value.focus ??
     (main ? { key: `${main.x}:${main.y}`, points: [main] } : null)
-  if (focus && focus.key !== state.focus && focus.points.length) {
+  const size = instance.getSize?.()
+  if (focus && focus.key !== state.focus && value.viewport) {
+    // A frame without a size yet is focused by the next update.
+    if (!size?.x || !size.y) return
+    state.focus = focus.key
+    const point = ({ x, y }: { x: number; y: number }) =>
+      instance.mapToLatLng2D(x, y) as MapPoint
+    const view = frameView(
+      focus.points.map(point),
+      {
+        width: size.x,
+        height: size.y,
+        insetRight: value.viewport.insetRight,
+      },
+      focus.primary && point(focus.primary),
+    )
+    // setView keeps the centre inside the bounds it finds, so they have to be those of the new zoom already.
+    instance.options.maxBounds = library.L.latLngBounds(
+      viewBounds(value.viewport.insetRight, view.zoom),
+    )
+    instance.setView(view.center, view.zoom, { animate: false })
+  } else if (focus && focus.key !== state.focus && focus.points.length) {
     state.focus = focus.key
     const points = focus.points.map(({ x, y }) => instance.mapToLatLng2D(x, y))
     if (points.length > 1)
@@ -190,6 +250,16 @@ export async function displayMap(
       })
     else instance.setView(points[0], -1, { animate: false })
   }
+}
+
+/** Keeps the map covering its frame: it cannot be zoomed out or moved until the frame shows beside it */
+function cover(instance: EoMap, state: DisplayState) {
+  const { x, y } = instance.getSize()
+  if (!x || !y) return
+  instance.setMinZoom(coverZoom(x, y))
+  const bounds = viewBounds(state.insetRight ?? 0, instance.getZoom())
+  instance.panInsideBounds(bounds, { animate: false })
+  instance.setMaxBounds(bounds)
 }
 
 function samePoints(

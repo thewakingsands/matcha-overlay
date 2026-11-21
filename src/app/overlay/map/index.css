@@ -1,0 +1,272 @@
+/* The map fills the body; the place name, the locate button and the event panel float on it */
+.overlay-map {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  overflow: hidden;
+  background: oklch(0.18 0.015 270);
+}
+.overlay-map .map-status,
+.overlay-map .map-error {
+  position: absolute;
+  inset: 0 calc(var(--map-panel) + 16px) 0 0;
+  display: grid;
+  place-items: center;
+  height: auto;
+  margin: 0;
+  padding: 0 16px;
+  color: var(--color-fg-3);
+  text-align: center;
+}
+
+.map-labels {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  max-width: calc(100% - var(--map-panel) - 32px);
+  pointer-events: none;
+}
+.map-place,
+.map-note {
+  max-width: 100%;
+  margin: 0;
+  overflow: hidden;
+  border-radius: var(--radius-control);
+  background: oklch(0.2 0.02 270 / 0.82);
+  box-shadow: var(--shadow-panel);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.map-place {
+  height: 28px;
+  padding: 0 10px;
+  font-weight: 600;
+  line-height: 28px;
+}
+.map-place > span {
+  margin-left: 6px;
+  color: var(--color-fg-3);
+  font-weight: 400;
+}
+.map-place-viewing {
+  background: oklch(0.3 0.06 125 / 0.92);
+}
+.map-place-viewing > span {
+  color: var(--color-ok-fg);
+}
+.map-note {
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  color: var(--color-fg-2);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.map-locate {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: oklch(0.2 0.02 270 / 0.82);
+  box-shadow: var(--shadow-panel);
+  color: var(--color-fg-2);
+}
+.map-locate:hover {
+  background: oklch(0.26 0.02 270 / 0.92);
+  color: var(--color-fg);
+}
+.map-locate:active {
+  box-shadow: var(--fin-pressed-sh);
+}
+.map-locate > svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* The event panel stays on the right, translucent over the map */
+.map-events {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  box-sizing: border-box;
+  width: var(--map-panel);
+  max-height: calc(100% - 16px);
+  padding: 4px;
+  overflow: auto;
+  border: 1px solid oklch(1 0 0 / 0.1);
+  border-radius: 10px;
+  background: oklch(0.19 0.02 270 / 0.8);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(6px);
+}
+.map-group + .map-group {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--color-line);
+}
+.map-group-title {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  padding: 4px 6px 2px;
+  color: var(--color-fg-3);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+}
+.map-group-title > span {
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.map-group-status {
+  margin: 0;
+  padding: 2px 6px 4px;
+}
+.map-event {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 6px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--color-fg);
+  font: inherit;
+  text-align: left;
+}
+button.map-event:hover {
+  background: var(--color-hover);
+}
+.map-event[aria-pressed="true"],
+.map-event[data-selected] {
+  background: var(--color-selected);
+}
+.map-event:focus-visible,
+.map-event-action:focus-visible,
+.map-locate:focus-visible {
+  outline: 2px solid var(--color-lime);
+  outline-offset: -2px;
+}
+.map-event-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 600;
+}
+.map-event-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.map-rank {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 3px;
+  box-sizing: border-box;
+  border-radius: var(--radius-xs);
+  background: var(--color-muted);
+  color: var(--color-fg-2);
+  font: 600 11px / 1 var(--font-mono);
+}
+.map-rank[data-rank^="S"] {
+  background: oklch(0.83 0.13 75 / 0.22);
+  color: var(--color-warn-fg);
+}
+.map-event-line {
+  color: var(--color-fg-3);
+  font-size: 12px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+.map-event-line b {
+  color: var(--color-fg);
+  font-weight: 500;
+}
+.map-event-line[data-live] {
+  color: var(--color-ok-fg);
+}
+.map-event-guidance {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--color-fg);
+}
+.map-event-dim {
+  color: var(--color-fg-3);
+}
+.map-event-coordinates {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 10px;
+  font: 11.5px / 18px var(--font-mono);
+}
+.map-event-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 26px;
+  margin-top: 5px;
+  border: 0;
+  border-radius: 7px;
+  background: oklch(1 0 0 / 0.08);
+  box-shadow: var(--fin-raised-sh);
+  color: var(--color-fg);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+}
+.map-event-action:hover {
+  background: oklch(1 0 0 / 0.12);
+}
+.map-event-action:active {
+  box-shadow: var(--fin-pressed-sh);
+}
+.map-event-action[aria-pressed="true"] {
+  background: var(--color-ok-soft);
+  color: var(--color-ok-fg);
+}
+.map-event-action > svg {
+  width: 14px;
+  height: 14px;
+}
+
+.map-direction {
+  display: grid;
+  flex: none;
+  width: 15px;
+  height: 15px;
+  color: var(--color-lime);
+}
+.map-direction > svg {
+  grid-area: 1 / 1;
+  width: 15px;
+  height: 15px;
+  transition:
+    transform 220ms ease-out,
+    opacity 140ms ease-out;
+}
+.map-direction-hidden {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-direction > svg {
+    transition: none;
+  }
+}

@@ -9,10 +9,25 @@ export interface ExplorationContext {
   territoryId: number | null
   clock: ClockState
 }
+/** Where the player is, whether or not there is a treasure map. Its content only changes when something shown does. */
+export interface LocationState {
+  context: Omit<ExplorationContext, 'clock'>
+  status: 'ready' | 'waiting' | 'unavailable'
+  reason: string | null
+  territoryId: number | null
+  /** The map to show: the default map of the territory */
+  mapId: number | null
+  /** Whether the player is on that map; a territory with several maps does not tell */
+  floorConfirmed: boolean
+  kind: 'field' | 'town' | 'eureka' | 'other' | null
+  player: { x: number; y: number; headingDegrees: number | null } | null
+}
 export interface NavigationState {
   context: ExplorationContext
   status: 'ready' | 'no-target' | 'waiting' | 'other-territory' | 'unavailable'
   reason: string | null
+  /** When the current treasure map was first reported; a map opened again after it was cleared gets a new time */
+  targetSince: number | null
   target: {
     itemId: number
     spotIndex: number
@@ -24,6 +39,12 @@ export interface NavigationState {
     y: number
     z: number | null
     zStatus: 'known' | 'hidden' | 'unavailable'
+    /** The aetheryte of the treasure's territory nearest in three dimensions, placed on the treasure's map */
+    aetheryte: {
+      name: string
+      distanceM: number
+      position: { mapId: number; x: number; y: number } | null
+    } | null
   } | null
   player: {
     x: number
@@ -94,6 +115,7 @@ export interface EurekaState {
   entries: EurekaEntry[]
 }
 export interface ExplorationStates {
+  location: LocationState | null
   navigation: NavigationState | null
   hunts: HuntState | null
   eureka: EurekaState | null

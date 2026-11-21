@@ -7,6 +7,7 @@ import {
 import type {
   ExplorationContext,
   HuntState,
+  LocationState,
   NavigationState,
 } from './exploration-types'
 
@@ -29,6 +30,7 @@ const navigation: NavigationState = {
   context,
   status: 'no-target',
   reason: null,
+  targetSince: null,
   target: null,
   player: null,
   guidance: null,
@@ -39,6 +41,17 @@ const hunts: HuntState = {
   reason: null,
   mapId: 1,
   entries: [],
+}
+const { clock: _, ...unclocked } = context
+const location: LocationState = {
+  context: unclocked,
+  status: 'ready',
+  reason: null,
+  territoryId: 100,
+  mapId: 1,
+  floorConfirmed: true,
+  kind: 'field',
+  player: { x: 10, y: 10, headingDegrees: 0 },
 }
 beforeEach(clearExploration)
 describe('optional Mojito exploration state', () => {
@@ -75,10 +88,45 @@ describe('optional Mojito exploration state', () => {
     clearExploration()
     expect(getExplorationState().navigation).toBeNull()
   })
+  it.each([
+    ['zone', { zoneEpoch: 2, territoryId: 200 }],
+    ['character', { characterGeneration: 1 }],
+    ['replay position', { clockGeneration: 1 }],
+  ])(
+    'shows the location of a new %s alone, and drops what arrives late from the old one',
+    (_, change) => {
+      receiveExploration('LocationState', location)
+      receiveExploration('HuntState', hunts)
+      expect(getExplorationState()).toMatchObject({ location, hunts })
+      const next = { ...location, context: { ...unclocked, ...change } }
+      receiveExploration('LocationState', next)
+      expect(getExplorationState()).toEqual({
+        location: next,
+        navigation: null,
+        hunts: null,
+        eureka: null,
+      })
+      receiveExploration('HuntState', hunts)
+      receiveExploration('NavigationState', navigation)
+      expect(getExplorationState().hunts).toBeNull()
+      expect(getExplorationState().navigation).toBeNull()
+    },
+  )
+  it('keeps the other states when only the position in the location changes', () => {
+    receiveExploration('HuntState', hunts)
+    receiveExploration('LocationState', location)
+    receiveExploration('LocationState', {
+      ...location,
+      player: { x: 11, y: 10, headingDegrees: 90 },
+    })
+    expect(getExplorationState().hunts).toEqual(hunts)
+    expect(getExplorationState().location?.player?.x).toBe(11)
+  })
   it('leaves ACT and incomplete payloads without invented new data', () => {
     receiveExploration('TreasureSpot', { item: 1, location: 0 })
     receiveExploration('HuntState', { context })
     expect(getExplorationState()).toEqual({
+      location: null,
       navigation: null,
       hunts: null,
       eureka: null,

@@ -53,6 +53,11 @@ function MapInstance(value: MapInfo) {
     const backgroundStatus = shadow.getElementById(
       'background-status',
     ) as HTMLElement
+    const outer = shadow.querySelector('.erozea-map-outer') as HTMLElement
+    const backgroundFailed = (failed: boolean) => {
+      backgroundStatus.hidden = !failed
+      outer.classList.toggle('map-background-failed', failed)
+    }
     let sizeFrame = 0
     let width = -1
     let height = -1
@@ -62,9 +67,6 @@ function MapInstance(value: MapInfo) {
       if (width === nextWidth && height === nextHeight) return
       width = nextWidth
       height = nextHeight
-      const outer = shadow.querySelector<HTMLElement>(
-        '.erozea-map-outer',
-      ) as HTMLElement
       outer.style.width = `${width}px`
       outer.style.height = `${height}px`
       instance?.invalidateSize({ animate: false, debounceMoveend: true })
@@ -111,6 +113,12 @@ function MapInstance(value: MapInfo) {
           while (pending && !disposed) {
             const next = pending
             pending = undefined
+            // A covering map has an opaque frame that says what is missing while there is no image.
+            outer.classList.toggle('map-cover', !!next.viewport)
+            outer.style.setProperty(
+              '--map-inset',
+              `${next.viewport?.insetRight ?? 0}px`,
+            )
             await session?.prepareIcons(
               next.markers?.flatMap(({ icon }) =>
                 icon ? [Number(icon)] : [],
@@ -128,7 +136,7 @@ function MapInstance(value: MapInfo) {
               backgroundMap = next.map
               backgroundWatch?.abort()
               backgroundWatch = new AbortController()
-              backgroundStatus.hidden = true
+              backgroundFailed(false)
               const url = library.loader.getMapUrl(map.mapInfo.id)
               const image = Array.from(
                 shadow.querySelectorAll<HTMLImageElement>(
@@ -136,10 +144,10 @@ function MapInstance(value: MapInfo) {
                 ),
               ).find((layer) => layer.getAttribute('src') === url)
               if (image)
-                watchBackground(image, url, backgroundWatch.signal, () => {
-                  backgroundStatus.hidden = false
-                })
-              else backgroundStatus.hidden = false
+                watchBackground(image, url, backgroundWatch.signal, () =>
+                  backgroundFailed(true),
+                )
+              else backgroundFailed(true)
             }
             if (!disposed) setError(undefined)
           }
