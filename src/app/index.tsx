@@ -23,18 +23,19 @@ import type { OverlayProps } from './interface'
 import { ActWsNotice } from './notice/actws'
 import { WelcomeNotice } from './notice/welcome'
 import { CactpotOverlay } from './overlay/cactpot'
-import { EurekaOverlay, HuntOverlay } from './overlay/exploration'
 import { FishingOverlay } from './overlay/fishing'
 import { GearsetOverlay } from './overlay/gearset'
+import { MapOverlay } from './overlay/map'
 import { MarketOverlay } from './overlay/market'
 import { SubmarineOverlay } from './overlay/submarine'
 import { TreasureOverlay } from './overlay/treasure'
 
 interface Tab {
   title: string
-  /** Only in ACT, where its troubleshooting steps apply */
-  actOnly?: boolean
-  mojitoOnly?: boolean
+  /** The host it is for; both without it */
+  only?: 'ACT' | 'Mojito'
+  /** Listed apart from the features: troubleshooting steps for ACT */
+  about?: boolean
   Component: (props: OverlayProps) => ReactElement | null
 }
 
@@ -42,17 +43,20 @@ const tabs: Record<string, Tab> = {
   market: { title: '物价对比', Component: MarketOverlay },
   gearset: { title: '配装比较', Component: GearsetOverlay },
   cactpot: { title: '仙人微彩', Component: CactpotOverlay },
-  treasure: { title: '寻宝', Component: TreasureOverlay },
+  // ACT has no source for the player's zone and position, so it keeps the treasure map on its own.
+  treasure: { title: '寻宝', only: 'ACT', Component: TreasureOverlay },
+  map: { title: '地图', only: 'Mojito', Component: MapOverlay },
   fishing: { title: '钓鱼', Component: FishingOverlay },
-  hunts: { title: '狩猎', mojitoOnly: true, Component: HuntOverlay },
-  eureka: { title: '优雷卡', mojitoOnly: true, Component: EurekaOverlay },
   submarine: { title: '部队潜水艇', Component: SubmarineOverlay },
-  welcome: { title: '关于', actOnly: true, Component: WelcomeNotice },
+  welcome: {
+    title: '关于',
+    only: 'ACT',
+    about: true,
+    Component: WelcomeNotice,
+  },
 }
 const available = Object.entries(tabs).filter(
-  ([, tab]) =>
-    (!tab.actOnly || adapter.name === 'ACT') &&
-    (!tab.mojitoOnly || adapter.name === 'Mojito'),
+  ([, tab]) => !tab.only || tab.only === adapter.name,
 )
 const defaultTab = adapter.name === 'ACT' ? 'welcome' : 'market'
 
@@ -71,8 +75,8 @@ function Header({
   lock: boolean
   setLock: (lock: boolean) => void
 }) {
-  const features = available.filter(([, tab]) => !tab.actOnly)
-  const about = available.filter(([, tab]) => tab.actOnly)
+  const features = available.filter(([, tab]) => !tab.about)
+  const about = available.filter(([, tab]) => tab.about)
 
   return (
     <header className="app-header">

@@ -3,16 +3,18 @@ import type {
   ExplorationContext,
   ExplorationStates,
   HuntState,
+  LocationState,
   NavigationState,
 } from './exploration-types'
 
 const empty = (): ExplorationStates => ({
+  location: null,
   navigation: null,
   hunts: null,
   eureka: null,
 })
 let state = empty()
-let context: ExplorationContext | null = null
+let context: Omit<ExplorationContext, 'clock'> | null = null
 const listeners = new Set<() => void>()
 const generations = [
   'characterGeneration',
@@ -33,7 +35,8 @@ function publish(next: ExplorationStates) {
 }
 export function clearExploration() {
   context = null
-  if (state.navigation || state.hunts || state.eureka) publish(empty())
+  if (state.location || state.navigation || state.hunts || state.eureka)
+    publish(empty())
 }
 export function receiveExploration(type: string, value: unknown) {
   if (type === 'Reset') {
@@ -41,25 +44,33 @@ export function receiveExploration(type: string, value: unknown) {
     return
   }
   const key =
-    type === 'NavigationState'
-      ? 'navigation'
-      : type === 'HuntState'
-        ? 'hunts'
-        : type === 'EurekaState'
-          ? 'eureka'
-          : null
+    type === 'LocationState'
+      ? 'location'
+      : type === 'NavigationState'
+        ? 'navigation'
+        : type === 'HuntState'
+          ? 'hunts'
+          : type === 'EurekaState'
+            ? 'eureka'
+            : null
   if (!key || !value || typeof value !== 'object' || !('context' in value))
     return
-  const next = value as NavigationState | HuntState | EurekaState
+  const next = value as
+    | LocationState
+    | NavigationState
+    | HuntState
+    | EurekaState
   if (
     typeof next.status !== 'string' ||
-    (key !== 'navigation' &&
+    ((key === 'hunts' || key === 'eureka') &&
       !('entries' in next && Array.isArray(next.entries)))
   )
     return
   const incoming = next.context
   if (
-    !incoming?.clock ||
+    !incoming ||
+    // The location carries no clock: it would change the state every tick.
+    (key !== 'location' && !('clock' in incoming && incoming.clock)) ||
     !generations.every(
       (key) => Number.isSafeInteger(incoming[key]) && incoming[key] >= 0,
     )

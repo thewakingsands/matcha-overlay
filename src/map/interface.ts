@@ -6,11 +6,16 @@ export interface Marker {
   y: number
   title?: string
   compact?: boolean
+  /** The way the player faces, clockwise from north; the player is a plain dot without it */
+  headingDegrees?: number | null
+  /** An accent ring around an icon, to pick it out from the map's own markers */
+  ring?: boolean
 }
 
 // https://xivapi.com/docs/Icons?set=icons060000
 export enum MapIcon {
   Treasure = '060003', // 060354
+  Aetheryte = '060453',
   Fate = '060093',
   Flag = '060561',
   MarkerA = '061241',
