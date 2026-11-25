@@ -17,7 +17,6 @@ import { EorzeaMap } from '../../../components/map'
 import { Maps } from '../../../data/maps'
 import { itemName, queryItem } from '../../../lib/store/item'
 import type { OverlayProps } from '../../interface'
-import { sourceTime } from '../exploration/format'
 import { Events } from './events'
 import {
   bringsForward,
@@ -140,8 +139,8 @@ export function MapOverlay({ active, setActive, language }: OverlayProps) {
             scene={current}
             navigation={navigation}
             treasureName={treasureName || '宝图'}
-            huntNow={sourceTime(hunts?.context.clock)}
-            eurekaNow={sourceTime(eureka?.context.clock)}
+            huntContext={hunts?.context}
+            eurekaContext={eureka?.context}
             onSelect={choose}
             onView={(viewing) => choose({ kind: 'auto' }, viewing)}
           />

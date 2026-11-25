@@ -14,7 +14,7 @@ const empty = (): ExplorationStates => ({
   eureka: null,
 })
 let state = empty()
-let context: Omit<ExplorationContext, 'clock'> | null = null
+let context: ExplorationContext | null = null
 const listeners = new Set<() => void>()
 const generations = [
   'characterGeneration',
@@ -69,8 +69,6 @@ export function receiveExploration(type: string, value: unknown) {
   const incoming = next.context
   if (
     !incoming ||
-    // The location carries no clock: it would change the state every tick.
-    (key !== 'location' && !('clock' in incoming && incoming.clock)) ||
     !generations.every(
       (key) => Number.isSafeInteger(incoming[key]) && incoming[key] >= 0,
     )

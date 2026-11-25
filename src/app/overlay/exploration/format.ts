@@ -1,9 +1,10 @@
-import type { ClockState } from '@ffcafe/mojito-plugin-sdk'
 import type {
   EurekaEntry,
+  ExplorationContext,
   HuntEntry,
   TimeWindow,
 } from '../../../adapter/exploration-types'
+import type { ViewClock } from '../../../adapter/types'
 
 export function direction(degrees: number | null) {
   return degrees === null
@@ -36,12 +37,12 @@ export function sortHunts(entries: HuntEntry[]) {
 }
 function eurekaOrder(entry: EurekaEntry, now: number | null) {
   if (entry.activity === 'active') return 0
+  const window = entry.conditions.estimatedWindow
   if (
     now !== null &&
-    entry.conditions.estimatedWindow &&
-    entry.conditions.estimatedWindow.opensAt <= now &&
-    (entry.conditions.estimatedWindow.closesAt === null ||
-      entry.conditions.estimatedWindow.closesAt > now)
+    window &&
+    (window.opensAt === null || window.opensAt <= now) &&
+    (window.closesAt === null || window.closesAt > now)
   )
     return 1
   if (entry.cooldown.readyAt !== null || entry.conditions.status === 'waiting')
@@ -53,11 +54,14 @@ function eurekaDeadline(entry: EurekaEntry, now: number | null) {
   if (eurekaOrder(entry, now) === 1)
     return entry.conditions.estimatedWindow?.closesAt ?? Infinity
   return (
-    entry.conditions.estimatedWindow?.opensAt ??
+    windowStart(entry.conditions.estimatedWindow, now) ??
     entry.cooldown.readyAt ??
-    entry.conditions.environmentWindow?.opensAt ??
+    windowStart(entry.conditions.environmentWindow, now) ??
     Infinity
   )
+}
+function windowStart(window: TimeWindow | null, now: number | null) {
+  return window === null ? null : (window.opensAt ?? now)
 }
 export function sortEureka(entries: EurekaEntry[], now: number | null) {
   return [...entries].sort(
@@ -77,15 +81,21 @@ export function eurekaActivity(entry: EurekaEntry, now: number | null) {
 }
 export function conditionWindow(window: TimeWindow | null, now: number | null) {
   if (window === null || now === null) return '未知'
-  if (window.opensAt > now) return `${duration(window.opensAt - now)} 后`
+  if (window.opensAt !== null && window.opensAt > now)
+    return `${duration(window.opensAt - now)} 后`
   return window.closesAt === null
     ? '当前满足'
     : `${duration(window.closesAt - now)} 内`
 }
 
-export function sourceTime(clock: ClockState | undefined) {
+export function sourceTime(
+  clock: ViewClock | null,
+  context: ExplorationContext | undefined,
+) {
   return clock?.source &&
-    clock.base &&
+    context &&
+    clock.sessionId === context.sessionId &&
+    clock.generation === context.clockGeneration &&
     clock.now !== null &&
     Number.isFinite(clock.now)
     ? clock.now

@@ -77,7 +77,6 @@ export async function subscribeMojito(
         timestamp: Date.now(),
       })
     lastSequence = -1
-    updateSourceClock(state)
     updateSourceData(state)
     await refreshCatalog()
     metadata?.({
@@ -163,8 +162,7 @@ export async function subscribeMojito(
   }
 }
 
-let sourceClock: ViewClock = { source: null, now: null, paused: false }
-export const getSourceClock = () => sourceClock
+export const getSourceClock = () => state.clock
 function updateSourceClock(value: Value) {
   if (!value || typeof value !== 'object' || !('session' in value)) return
   const session = value.session
@@ -174,11 +172,20 @@ function updateSourceClock(value: Value) {
     !clock ||
     typeof clock !== 'object' ||
     !('now' in clock) ||
+    !('generation' in clock) ||
+    typeof clock.generation !== 'number' ||
+    !Number.isSafeInteger(clock.generation) ||
+    clock.generation < 0 ||
     !('source' in clock) ||
     !('paused' in clock)
   )
     return
-  sourceClock = {
+  const next: ViewClock = {
+    sessionId:
+      'sessionId' in session && typeof session.sessionId === 'string'
+        ? session.sessionId
+        : null,
+    generation: clock.generation,
     source: typeof clock.source === 'string' ? clock.source : null,
     now:
       typeof clock.now === 'number' && Number.isFinite(clock.now)
@@ -186,7 +193,16 @@ function updateSourceClock(value: Value) {
         : null,
     paused: clock.paused === true,
   }
-  updateState({ clock: sourceClock })
+  const previous = state.clock
+  if (
+    previous?.sessionId === next.sessionId &&
+    previous.generation === next.generation &&
+    previous.source === next.source &&
+    previous.now === next.now &&
+    previous.paused === next.paused
+  )
+    return
+  updateState({ clock: next })
 }
 let bridge: ViewBridge | undefined
 let itemDataSource: DataSourceInfo | null = null
@@ -363,11 +379,14 @@ export async function prepareSource() {
     }
   })
   const clock = bridge.subscribe('matcha.status', (batch) => {
-    if (signal.aborted) return
+    if (signal.aborted || bridge !== connection) return
     for (const item of batch.items) {
       updateSourceClock(item)
       updateSourceData(item)
     }
+  })
+  void clock.closed.then(() => {
+    if (bridge === connection) updateState({ clock: null })
   })
   cleanupConnection = () => {
     changes.dispose()
@@ -375,6 +394,7 @@ export async function prepareSource() {
     if (originalFetch) window.fetch = originalFetch
     bridge = undefined
     catalogRequest = undefined
+    updateState({ clock: null })
     clearClientCatalog()
   }
   try {
@@ -383,12 +403,7 @@ export async function prepareSource() {
     await refreshCatalog()
     signal.throwIfAborted()
   } catch (error) {
-    changes.dispose()
-    clock.dispose()
-    if (originalFetch) window.fetch = originalFetch
-    bridge = undefined
-    catalogRequest = undefined
-    clearClientCatalog()
+    if (bridge === connection) cleanupConnection()
     throw error
   }
 }

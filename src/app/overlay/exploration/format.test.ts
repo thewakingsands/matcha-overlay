@@ -83,15 +83,28 @@ describe('exploration display semantics', () => {
 })
 
 it('ignores a numeric time without a comparable source and orders ended NM by future windows', () => {
+  const context = {
+    sessionId: 'test',
+    clockGeneration: 2,
+    characterGeneration: 0,
+    zoneEpoch: 1,
+    catalogRevision: 1,
+    territoryId: 732,
+  }
+  const clock = {
+    sessionId: 'test',
+    generation: 2,
+    source: 'replay',
+    now: 10000,
+    paused: true,
+  }
+  expect(sourceTime(clock, context)).toBe(10000)
+  expect(sourceTime({ ...clock, source: null }, context)).toBeNull()
   expect(
-    sourceTime({
-      now: 10000,
-      base: null,
-      source: null,
-      generation: 0,
-      paused: false,
-    }),
+    sourceTime({ ...clock, sessionId: 'another-source' }, context),
   ).toBeNull()
+  expect(sourceTime({ ...clock, generation: 1 }, context)).toBeNull()
+  expect(sourceTime({ ...clock, now: null }, context)).toBeNull()
   const earlier = {
     ...nm,
     fateId: 2,
@@ -109,4 +122,27 @@ it('ignores a numeric time without a comparable source and orders ended NM by fu
   expect(
     sortEureka([later, earlier], 10000).map((entry) => entry.fateId),
   ).toEqual([2, 1])
+})
+
+it('shows already open windows and sorts them using their closing edge', () => {
+  const open = { opensAt: null, closesAt: 12000 }
+  const future = { opensAt: 11000, closesAt: 13000 }
+  expect(conditionWindow(open, 10000)).toBe('0:02 内')
+  expect(conditionWindow(future, 10000)).toBe('0:01 后')
+  expect(conditionWindow({ ...open, closesAt: null }, 10000)).toBe('当前满足')
+  expect(conditionWindow(open, null)).toBe('未知')
+  const rows = [
+    {
+      ...nm,
+      fateId: 1,
+      conditions: { ...nm.conditions, estimatedWindow: future },
+    },
+    {
+      ...nm,
+      fateId: 2,
+      conditions: { ...nm.conditions, estimatedWindow: open },
+    },
+  ]
+  expect(sortEureka(rows, 10000).map((entry) => entry.fateId)).toEqual([2, 1])
+  expect(sortEureka(rows, 12000).map((entry) => entry.fateId)).toEqual([1, 2])
 })

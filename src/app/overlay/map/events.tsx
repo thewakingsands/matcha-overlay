@@ -1,16 +1,20 @@
 import { Undo2 } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { type ReactNode, useSyncExternalStore } from 'react'
 import type {
   EurekaEntry,
+  ExplorationContext,
   HuntEntry,
   NavigationState,
 } from '../../../adapter/exploration-types'
+import { adapter, getSourceClock } from '../../../adapter/mojito'
 import {
   conditionWindow,
   direction,
   duration,
   heightDifference,
   observationAge,
+  sortEureka,
+  sourceTime,
 } from '../exploration/format'
 import { DirectionMarker } from './direction'
 import { monsterName, type Scene, type Selection } from './model'
@@ -195,21 +199,28 @@ export function Events({
   scene,
   navigation,
   treasureName,
-  huntNow,
-  eurekaNow,
+  huntContext,
+  eurekaContext,
   onSelect,
   onView,
 }: {
   scene: Scene
   navigation: NavigationState | null
   treasureName: string
-  /** Source time of the hunt and Eureka states, for ages and countdowns */
-  huntNow: number | null
-  eurekaNow: number | null
+  huntContext: ExplorationContext | undefined
+  eurekaContext: ExplorationContext | undefined
   onSelect: (selection: Selection) => void
   onView: (viewing: boolean) => void
 }) {
   const { selection } = scene
+  const timeContext = scene.eureka?.entries.length
+    ? eurekaContext
+    : scene.hunts.some((entry) => entry.state === 'last-seen')
+      ? huntContext
+      : undefined
+  const now = useSyncExternalStore(adapter.subscribeState, () =>
+    sourceTime(getSourceClock(), timeContext),
+  )
   const chosen = (kind: 'hunt' | 'nm', id: number) =>
     selection.kind === kind && 'id' in selection && selection.id === id
   return (
@@ -245,9 +256,7 @@ export function Events({
                 )}
                 <span className="map-event-name">{entry.name}</span>
               </span>
-              <span className="map-event-line">
-                {huntDetail(entry, huntNow)}
-              </span>
+              <span className="map-event-line">{huntDetail(entry, now)}</span>
             </button>
           ))}
         </Group>
@@ -259,9 +268,9 @@ export function Events({
               {scene.eureka.reason}
             </p>
           )}
-          {scene.eureka.entries.map((entry) => {
-            const activity = monsterActivity(entry, eurekaNow)
-            const condition = monsterCondition(entry, eurekaNow)
+          {sortEureka(scene.eureka.entries, now).map((entry) => {
+            const activity = monsterActivity(entry, now)
+            const condition = monsterCondition(entry, now)
             return (
               <button
                 key={entry.fateId}

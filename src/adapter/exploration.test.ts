@@ -18,13 +18,6 @@ const context: ExplorationContext = {
   zoneEpoch: 1,
   catalogRevision: 1,
   territoryId: 100,
-  clock: {
-    now: 10000,
-    base: 'packet-unix',
-    generation: 0,
-    source: 'replay',
-    paused: true,
-  },
 }
 const navigation: NavigationState = {
   context,
@@ -42,9 +35,8 @@ const hunts: HuntState = {
   mapId: 1,
   entries: [],
 }
-const { clock: _, ...unclocked } = context
 const location: LocationState = {
-  context: unclocked,
+  context,
   status: 'ready',
   reason: null,
   territoryId: 100,
@@ -55,15 +47,15 @@ const location: LocationState = {
 }
 beforeEach(clearExploration)
 describe('optional Mojito exploration state', () => {
-  it('retains independent full states without treating clock ticks as resets', () => {
+  it('retains independent full states for the same exploration context', () => {
     receiveExploration('NavigationState', navigation)
     receiveExploration('HuntState', hunts)
     receiveExploration('NavigationState', {
       ...navigation,
-      context: { ...context, clock: { ...context.clock, now: 11000 } },
+      targetSince: 11000,
     })
     expect(getExplorationState().hunts).toEqual(hunts)
-    expect(getExplorationState().navigation?.context.clock.now).toBe(11000)
+    expect(getExplorationState().navigation?.targetSince).toBe(11000)
   })
   it('clears other kinds on a region boundary and rejects late older generations', () => {
     receiveExploration('NavigationState', navigation)
@@ -98,7 +90,7 @@ describe('optional Mojito exploration state', () => {
       receiveExploration('LocationState', location)
       receiveExploration('HuntState', hunts)
       expect(getExplorationState()).toMatchObject({ location, hunts })
-      const next = { ...location, context: { ...unclocked, ...change } }
+      const next = { ...location, context: { ...context, ...change } }
       receiveExploration('LocationState', next)
       expect(getExplorationState()).toEqual({
         location: next,

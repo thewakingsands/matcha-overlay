@@ -6,7 +6,7 @@ import type {
 } from '../../../adapter/exploration-types'
 import type { MapInfo } from '../../../components/map'
 import { MapIcon, type Marker } from '../../../map/interface'
-import { sortEureka, sortHunts, sourceTime } from '../exploration/format'
+import { sortHunts } from '../exploration/format'
 
 /** What the map is centred on: `auto` is the treasure map when it is on this map, else the player */
 export type Selection =
@@ -73,7 +73,7 @@ export function scene(
       : []
   const monsters =
     kind === 'eureka' && current !== null && eureka?.mapId === current
-      ? sortEureka(eureka.entries, sourceTime(eureka.context.clock))
+      ? eureka.entries
       : null
   const chosen =
     view.mapId === current && view.since === (navigation?.targetSince ?? null)

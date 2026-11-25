@@ -1,5 +1,3 @@
-import type { ClockState } from '@ffcafe/mojito-plugin-sdk'
-
 export interface ExplorationContext {
   sessionId: string | null
   characterGeneration: number
@@ -7,11 +5,10 @@ export interface ExplorationContext {
   zoneEpoch: number
   catalogRevision: number
   territoryId: number | null
-  clock: ClockState
 }
 /** Where the player is, whether or not there is a treasure map. Its content only changes when something shown does. */
 export interface LocationState {
-  context: Omit<ExplorationContext, 'clock'>
+  context: ExplorationContext
   status: 'ready' | 'waiting' | 'unavailable'
   reason: string | null
   territoryId: number | null
@@ -49,7 +46,6 @@ export interface NavigationState {
   player: {
     x: number
     y: number
-    observedAt: number
     headingDegrees: number | null
   } | null
   guidance: {
@@ -81,7 +77,8 @@ export interface HuntState {
   entries: HuntEntry[]
 }
 export interface TimeWindow {
-  opensAt: number
+  /** An open window has no future opening time. */
+  opensAt: number | null
   closesAt: number | null
 }
 export interface EurekaEntry {

@@ -123,12 +123,21 @@ it('provides state, storage, events, speech and authorized images through the Mo
   await f.emit('matcha.status', [
     {
       mapDataGeneration: 2,
-      session: { clock: { source: 'replay', now: 456, paused: true } },
+      session: {
+        sessionId: 'test-replay',
+        clock: { source: 'replay', generation: 2, now: 456, paused: true },
+      },
     },
   ])
   expect(adapter.getState()).toMatchObject({
     mapGeneration: 2,
-    clock: { source: 'replay', now: 456, paused: true },
+    clock: {
+      sessionId: 'test-replay',
+      source: 'replay',
+      generation: 2,
+      now: 456,
+      paused: true,
+    },
   })
   await adapter.speak('test')
   expect(f.command).toHaveBeenCalledWith(

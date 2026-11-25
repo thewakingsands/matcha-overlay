@@ -2,6 +2,8 @@ import type { MatchaEvent } from '../app/interface'
 export type Dispose = () => void
 export type MapLibrary = typeof import('@thewakingsands/eorzea-interactive-map')
 export interface ViewClock {
+  sessionId: string | null
+  generation: number
   source: string | null
   now: number | null
   paused: boolean

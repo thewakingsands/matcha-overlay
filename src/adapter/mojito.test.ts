@@ -3,20 +3,24 @@ import type {
   Subscription,
   Value,
 } from '@ffcafe/mojito-plugin-sdk'
-import type { ViewBridge } from '@ffcafe/mojito-plugin-sdk/view'
+import { connectView, type ViewBridge } from '@ffcafe/mojito-plugin-sdk/view'
 import { describe, expect, it, vi } from 'vitest'
 import { displayClockTime } from '../app/overlay/fishing/clock'
 import { isMojitoSource } from './index'
 import {
+  adapter,
   envelope,
   getItemDataSource,
   getMapDataGeneration,
+  getSourceClock,
   type MatchaEnvelope,
   subscribeMojito,
   updateSourceData,
   watchItemDataSource,
   watchMapDataGeneration,
 } from './mojito'
+
+vi.mock('@ffcafe/mojito-plugin-sdk/view', () => ({ connectView: vi.fn() }))
 
 const event = (sequence: number): MatchaEnvelope => ({
   sequence,
@@ -161,6 +165,120 @@ describe('Matcha data-source adapter', () => {
     })
     expect(seen).toEqual(['Gearset:1', 'Reset:1', 'Gearset:3'])
     expect(snapshot).toHaveBeenCalledTimes(2)
+  })
+  it('uses retained status across content restore, source changes, and reopening', async () => {
+    vi.stubGlobal('window', { fetch: globalThis.fetch })
+    vi.stubGlobal('document', { documentElement: { dataset: {} } })
+    const batch = (items: Value[], initial = false) => ({
+      subscriptionId: 'test',
+      batchId: 1,
+      firstSeq: 1,
+      lastSeq: 1,
+      initial,
+      complete: true,
+      items,
+    })
+    const status = (
+      sessionId: string,
+      generation: number,
+      now: number,
+      paused = false,
+    ) => ({
+      session: {
+        sessionId,
+        clock: { generation, now, paused, source: 'replay' },
+      },
+    })
+    const connect = (initial: Value[]) => {
+      const listeners = new Map<string, BatchListener<Value>>()
+      const listener = (channel: string) => {
+        const receive = listeners.get(channel)
+        if (!receive) throw new Error(`Missing subscription for ${channel}`)
+        return receive
+      }
+      let closeStatus!: (result: { reason: 'disposed' }) => void
+      const closed = new Promise<{ reason: 'disposed' }>((resolve) => {
+        closeStatus = resolve
+      })
+      const snapshot = vi.fn(async () => ({
+        ...status('old-snapshot', 1, 100),
+        sequence: 1,
+        events: [event(1)],
+      }))
+      vi.mocked(connectView).mockResolvedValueOnce({
+        identity: { kind: 'overlay' },
+        subscribe: (channel: string, listener: BatchListener<Value>) => {
+          listeners.set(channel, listener)
+          if (channel === 'matcha.status')
+            queueMicrotask(() => void listener(batch(initial, true)))
+          return {
+            ready: Promise.resolve(),
+            closed:
+              channel === 'matcha.status' ? closed : new Promise(() => {}),
+            dispose: vi.fn(),
+          }
+        },
+        snapshot,
+        command: vi.fn(async () => null),
+      } as unknown as ViewBridge)
+      return { listener, snapshot, closeStatus }
+    }
+
+    try {
+      const first = connect([status('replay', 2, 101000)])
+      await adapter.prepare()
+      expect(getSourceClock()).toMatchObject({
+        sessionId: 'replay',
+        generation: 2,
+        now: 101000,
+      })
+      await adapter.subscribeEvents(() => {})
+      expect(first.snapshot).toHaveBeenCalledWith(
+        'matcha.state',
+        expect.anything(),
+      )
+      expect(getSourceClock()?.now).toBe(101000)
+
+      const statusListener = first.listener('matcha.status')
+      await statusListener(batch([status('replay', 2, 100900, true)]))
+      expect(getSourceClock()).toMatchObject({ now: 100900, paused: true })
+      first.snapshot.mockResolvedValueOnce({
+        ...status('old-snapshot', 1, 500),
+        sequence: 3,
+        events: [event(3)],
+      })
+      await first.listener('matcha.events')(
+        batch([event(3) as unknown as Value]),
+      )
+      expect(getSourceClock()).toMatchObject({ now: 100900, paused: true })
+
+      await statusListener(batch([status('next', 3, 2000)]))
+      expect(getSourceClock()).toMatchObject({
+        sessionId: 'next',
+        generation: 3,
+        now: 2000,
+      })
+      first.closeStatus({ reason: 'disposed' })
+      await Promise.resolve()
+      expect(getSourceClock()).toBeNull()
+      adapter.dispose()
+
+      const reopened = connect([])
+      await adapter.prepare()
+      await adapter.subscribeEvents(() => {})
+      expect(getSourceClock()).toBeNull()
+      await statusListener(batch([status('stale', 2, 120000)]))
+      expect(getSourceClock()).toBeNull()
+      await reopened.listener('matcha.status')(batch([status('next', 3, 3000)]))
+      expect(getSourceClock()).toMatchObject({
+        sessionId: 'next',
+        generation: 3,
+        now: 3000,
+      })
+    } finally {
+      adapter.dispose()
+      vi.unstubAllGlobals()
+    }
   })
   it('uses host replay time instead of wall time, including paused and completed casts', () => {
     const cast = {

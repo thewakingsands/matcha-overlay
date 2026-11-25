@@ -25,13 +25,6 @@ const context: ExplorationContext = {
   zoneEpoch: 1,
   catalogRevision: 1,
   territoryId: 100,
-  clock: {
-    now: 10000,
-    base: 'packet-unix',
-    generation: 0,
-    source: 'live',
-    paused: false,
-  },
 }
 const location = (change: Partial<LocationState> = {}): LocationState => ({
   context,
@@ -338,10 +331,20 @@ it('centres the chosen entry, and the player when the entry has gone', () => {
 
   const island = everything({ location: location({ kind: 'eureka' }) })
   const nm = show(island, { ...view, selection: { kind: 'nm', id: 1404 } })
-  expect(nm.map?.markers?.slice(0, 2)).toMatchObject([
-    { id: 'nm:1396', compact: true, title: undefined },
-    { id: 'nm:1404', compact: false, title: '彭忒西勒亚' },
-  ])
+  expect(nm.map?.markers?.slice(0, 2)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'nm:1396',
+        compact: true,
+        title: undefined,
+      }),
+      expect.objectContaining({
+        id: 'nm:1404',
+        compact: false,
+        title: '彭忒西勒亚',
+      }),
+    ]),
+  )
   expect(monsterName('火巨人')).toBe('火巨人')
 })
 
